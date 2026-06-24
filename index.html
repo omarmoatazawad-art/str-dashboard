@@ -3632,6 +3632,42 @@ let myCurrentMonth = CURRENT_MONTH_IDX;
 let myChartInst    = null;
 let notifSettings  = { threshold:60, alertsEnabled:true, digestEnabled:true };
 
+// ═══════════════════════════════════════════════════════════════════════
+//  EVALUATION CRITERIA WEIGHTS — per-job-type data (declared BEFORE init())
+//  Each job type has its own independent criteria + weights, saved separately
+//  in localStorage. Declared here (ahead of init) so the bindings are always
+//  initialized before any settings/render code can touch them.
+// ═══════════════════════════════════════════════════════════════════════
+const LS_JOB_WEIGHTS = 'str_job_weights_v1';
+const JOB_TYPES = [
+  { key:'sales',   label:'مبيعات' },
+  { key:'cleaner', label:'عامل نظافة' },
+  { key:'cashier', label:'كاشير' },
+];
+const DEFAULT_EVAL_SETTINGS = {
+  sales:   { criteria: [
+    { name:'حسن التعامل مع العميل',   weight:30 },
+    { name:'تحقيق المبيعات',          weight:25 },
+    { name:'الالتزام بالحضور',        weight:20 },
+    { name:'الالتزام بالتعليمات',     weight:15 },
+    { name:'الالتزام بالمهام اليومية', weight:10 },
+  ]},
+  cleaner: { criteria: [
+    { name:'نظافة المكان',        weight:40 },
+    { name:'الالتزام بالحضور',    weight:25 },
+    { name:'سرعة الإنجاز',        weight:20 },
+    { name:'الالتزام بالتعليمات', weight:15 },
+  ]},
+  cashier: { criteria: [
+    { name:'دقة الحسابات',           weight:35 },
+    { name:'سرعة الخدمة',            weight:25 },
+    { name:'حسن التعامل مع العملاء', weight:25 },
+    { name:'الالتزام بالحضور',       weight:15 },
+  ]},
+};
+let evaluationSettings = null;
+let currentJobType = 'sales';
+
 // ═══════════════════════════════════════════════════
 //  START
 // ═══════════════════════════════════════════════════
@@ -4430,40 +4466,10 @@ function refreshAllDashboards() {
 
 /* ── Render weight editor inside the settings panel ── */
 // ═══════════════════════════════════════════════════════════════════════
-//  EVALUATION CRITERIA WEIGHTS — per job type (مبيعات / عامل نظافة / كاشير)
-//  Each job type has its own independent criteria + weights, saved separately
-//  in localStorage. Switching the dropdown loads that type's saved values.
+//  EVALUATION CRITERIA WEIGHTS — per job type
+//  (data structures declared earlier, ABOVE init(), so they are never in the
+//   temporal-dead-zone when renderWeightEditor runs)
 // ═══════════════════════════════════════════════════════════════════════
-const LS_JOB_WEIGHTS = 'str_job_weights_v1';
-const JOB_TYPES = [
-  { key:'sales',   label:'مبيعات' },
-  { key:'cleaner', label:'عامل نظافة' },
-  { key:'cashier', label:'كاشير' },
-];
-const DEFAULT_EVAL_SETTINGS = {
-  sales:   { criteria: [
-    { name:'حسن التعامل مع العميل',   weight:30 },
-    { name:'تحقيق المبيعات',          weight:25 },
-    { name:'الالتزام بالحضور',        weight:20 },
-    { name:'الالتزام بالتعليمات',     weight:15 },
-    { name:'الالتزام بالمهام اليومية', weight:10 },
-  ]},
-  cleaner: { criteria: [
-    { name:'نظافة المكان',        weight:40 },
-    { name:'الالتزام بالحضور',    weight:25 },
-    { name:'سرعة الإنجاز',        weight:20 },
-    { name:'الالتزام بالتعليمات', weight:15 },
-  ]},
-  cashier: { criteria: [
-    { name:'دقة الحسابات',           weight:35 },
-    { name:'سرعة الخدمة',            weight:25 },
-    { name:'حسن التعامل مع العملاء', weight:25 },
-    { name:'الالتزام بالحضور',       weight:15 },
-  ]},
-};
-let evaluationSettings = null;
-let currentJobType = 'sales';
-
 function loadEvalSettings() {
   try { evaluationSettings = JSON.parse(localStorage.getItem(LS_JOB_WEIGHTS)); } catch(e) { evaluationSettings = null; }
   // Validate shape; (re)seed defaults if missing/corrupt
