@@ -1804,7 +1804,8 @@ body.employee-role { padding-bottom: 0 !important; }
               <th>المستخدم</th>
               <th>اسم المستخدم</th>
               <th>كلمة المرور</th>
-              <th>الدور الحالي</th>
+              <th>الوظيفة (الدور)</th>
+              <th>المهنة</th>
               <th>الموظف المرتبط</th>
               <th>تغيير الدور</th>
               <th>إجراءات</th>
@@ -1965,11 +1966,25 @@ body.employee-role { padding-bottom: 0 !important; }
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size:12px;font-weight:800;color:var(--text2);">الدور في النظام</label>
+          <label class="form-label" style="font-size:12px;font-weight:800;color:var(--text2);">الدور في النظام (الوظيفة)</label>
           <select class="form-select" id="aem-role" style="font-size:14px;">
             <option value="employee">موظف — يرى أداءه فقط</option>
             <option value="manager">مشرف — يرى الكل</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px;font-weight:800;color:var(--text2);">المهنة (مستقلة عن الدور)</label>
+          <input list="prof-datalist" class="form-input" id="aem-profession" placeholder="مثال: محاسب، كاشير، أمين مخزن..." style="font-size:14px;">
+          <datalist id="prof-datalist">
+            <option value="بائع كاشير"></option>
+            <option value="كاشير"></option>
+            <option value="مندوب مبيعات"></option>
+            <option value="موظف خدمة عملاء"></option>
+            <option value="محاسب"></option>
+            <option value="أمين مخزن"></option>
+            <option value="فني صيانة"></option>
+            <option value="مسؤول موارد بشرية"></option>
+          </datalist>
         </div>
         <div class="form-group">
           <label class="form-label" style="font-size:12px;font-weight:800;color:var(--text2);">اسم المستخدم <span style="color:var(--danger);">*</span></label>
@@ -2310,7 +2325,7 @@ function getFilteredEmployees() {
 
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    list = list.filter(e => e.name.toLowerCase().includes(q) || e.dept.includes(q));
+    list = list.filter(e => e.name.toLowerCase().includes(q) || e.dept.includes(q) || (getProfession(e.id) || '').toLowerCase().includes(q));
   }
   if (deptFilter) list = list.filter(e => e.dept === deptFilter);
   if (statusFilter) list = list.filter(e => getStatus(e.finalScore).key === statusFilter);
@@ -2347,7 +2362,7 @@ function renderTable() {
             <div class="emp-avatar" style="background:${emp.color};">${getAvatarInitial(emp.name)}</div>
             <div class="emp-name-info">
               <div class="emp-name-main" onclick="openModal(${emp.id})">${emp.name}</div>
-              <div class="emp-name-dept">${emp.dept}</div>
+              <div class="emp-name-dept">${emp.dept}${getProfession(emp.id) ? ' · ' + getProfession(emp.id) : ''}</div>
             </div>
           </div>
         </td>
@@ -2793,7 +2808,8 @@ function openModal(empId) {
   document.getElementById('modal-avatar').textContent = getAvatarInitial(emp.name);
   document.getElementById('modal-avatar').style.background = emp.color;
   document.getElementById('modal-name').textContent = emp.name;
-  document.getElementById('modal-dept').textContent = emp.dept + ' · يونيو 2025';
+  const _prof = getProfession(emp.id);
+  document.getElementById('modal-dept').textContent = (_prof ? _prof + ' · ' : '') + emp.dept + ' · يونيو 2025';
   document.getElementById('modal-score-val').textContent = data.final.toFixed(1) + '%';
   document.getElementById('modal-score-val').style.color = getScoreColor(data.final);
 
@@ -3142,9 +3158,9 @@ function printReport() {
 
 function exportTableCSV() {
   const list = getFilteredEmployees();
-  const headers = ['الاسم','القسم','النتيجة النهائية','التواصل مع العميل','المبيعات','الحضور','التعليمات','المهام','الفريق','المظهر','الحالة'];
+  const headers = ['الاسم','المهنة','القسم','النتيجة النهائية','التواصل مع العميل','المبيعات','الحضور','التعليمات','المهام','الفريق','المظهر','الحالة'];
   const rows = list.map(e => [
-    e.name, e.dept, e.finalScore.toFixed(1),
+    e.name, (getProfession(e.id) || ''), e.dept, e.finalScore.toFixed(1),
     e.communication, e.sales, e.attendance,
     e.instructions, e.tasks, e.teamwork, e.appearance,
     getStatus(e.finalScore).label.replace(/[^؀-ۿ\s]/g,'').trim()
@@ -3423,7 +3439,7 @@ function renderEntriesList() {
         <div class="entry-item-top">
           <div>
             <div class="entry-item-name">${entry.empName}</div>
-            <div class="entry-item-meta">📅 ${entry.dateLabel} · ${entry.timeLabel} · ${entry.period} · ${entry.dept}</div>
+            <div class="entry-item-meta">📅 ${entry.dateLabel} · ${entry.timeLabel} · ${entry.period} · ${entry.dept}${getProfessionByName(entry.empName) ? ' · 💼 ' + getProfessionByName(entry.empName) : ''}</div>
             ${entry.rater && entry.rater !== '—' ? `<div class="entry-item-meta">👤 المشرف: ${entry.rater}</div>` : ''}
             ${entry.notes ? `<div class="entry-item-meta" style="color:var(--text2);font-style:italic;">💬 ${entry.notes}</div>` : ''}
           </div>
@@ -3667,6 +3683,11 @@ const DEFAULT_EVAL_SETTINGS = {
 };
 let evaluationSettings = null;
 let currentJobType = 'sales';
+
+// المهنة (Profession) — an attribute fully independent of the role (الوظيفة).
+// Stored per-user, persisted separately in localStorage. Declared before init().
+const LS_PROFESSIONS = 'str_professions_v1';
+const PROFESSIONS = ['بائع كاشير','كاشير','مندوب مبيعات','موظف خدمة عملاء','محاسب','أمين مخزن','فني صيانة','مسؤول موارد بشرية'];
 
 // ═══════════════════════════════════════════════════
 //  START
@@ -4085,6 +4106,7 @@ function renderUsersTable() {
         <td><code style="background:var(--surface2);border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700;color:var(--primary);letter-spacing:.5px;">${u.username}</code></td>
         <td><code style="background:var(--surface2);border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;">${u.password}</code></td>
         <td><span class="role-badge role-${u.role}">${ROLE_LABELS[u.role]}</span></td>
+        <td>${professionSelectHtml(u)}</td>
         <td style="color:var(--text3);font-size:13px;">${linkedEmp}</td>
         <td>
           <select class="filter-select" style="font-size:12px;padding:5px 10px;"
@@ -4118,9 +4140,69 @@ function renderUsersTable() {
 function changeUserRole(userId, newRole) {
   const u = SAMPLE_USERS.find(u => u.id === userId);
   if (!u) return;
-  u.role = newRole;
+  u.role = newRole;                 // ← changing the role NEVER touches profession (req 10)
   renderUsersTable(); // refresh to reflect badge change
   showToast('✅ تم تغيير دور ' + u.name + ' إلى ' + ROLE_LABELS[newRole], 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  المهنة (PROFESSION) — independent of الوظيفة (role)
+// ═══════════════════════════════════════════════════════════════
+// Read the profession map and apply onto SAMPLE_USERS (safe migration:
+// any user without a saved profession defaults to empty string).
+function loadProfessions() {
+  let map = {};
+  try { map = JSON.parse(localStorage.getItem(LS_PROFESSIONS) || '{}') || {}; } catch(e) { map = {}; }
+  SAMPLE_USERS.forEach(u => {
+    u.profession = (map[u.id] != null) ? map[u.id] : (u.profession || '');
+  });
+}
+
+// Persist one user's profession (separate store; does NOT affect role/permissions)
+function saveProfession(userId, value) {
+  const u = SAMPLE_USERS.find(x => x.id === userId);
+  if (!u) return;
+  u.profession = (value || '').trim();
+  let map = {};
+  try { map = JSON.parse(localStorage.getItem(LS_PROFESSIONS) || '{}') || {}; } catch(e) { map = {}; }
+  map[userId] = u.profession;
+  try { localStorage.setItem(LS_PROFESSIONS, JSON.stringify(map)); } catch(e) {}
+  showToast(u.profession ? `✅ تم تحديث مهنة ${u.name}` : `تم مسح مهنة ${u.name}`, 'success');
+}
+
+// Look up an employee's profession via the linked user account (empId link)
+function getProfession(empId) {
+  const u = SAMPLE_USERS.find(x => x.empId === empId);
+  return (u && u.profession) ? u.profession : '';
+}
+function getProfessionByName(name) {
+  const e = EMPLOYEES.find(x => x.name === name);
+  return e ? getProfession(e.id) : '';
+}
+
+// Build the المهنة dropdown for one user (easy select, like the role dropdown,
+// plus an "أخرى" option to type any custom profession).
+function professionSelectHtml(u) {
+  const cur = u.profession || '';
+  let opts = `<option value=""${cur === '' ? ' selected' : ''}>— غير محددة —</option>`;
+  opts += PROFESSIONS.map(p => `<option value="${p}"${p === cur ? ' selected' : ''}>${p}</option>`).join('');
+  if (cur && !PROFESSIONS.includes(cur)) opts += `<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur}</option>`;
+  opts += `<option value="__other__">✏️ مهنة أخرى...</option>`;
+  return `<select class="filter-select" style="font-size:12px;padding:5px 10px;min-width:150px;"
+    onchange="onProfessionSelect(${u.id}, this.value, this)" aria-label="مهنة ${u.name}">${opts}</select>`;
+}
+
+// Handle the dropdown change; "أخرى" prompts for a custom profession
+function onProfessionSelect(userId, value, selectEl) {
+  if (value === '__other__') {
+    const u = SAMPLE_USERS.find(x => x.id === userId);
+    const custom = prompt('اكتب المهنة:', (u && u.profession) || '');
+    if (custom == null) { if (selectEl) selectEl.value = (u && u.profession) || ''; return; } // cancelled
+    saveProfession(userId, custom);
+    renderUsersTable();   // re-render so the new custom value shows as a selected option
+    return;
+  }
+  saveProfession(userId, value);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4196,6 +4278,9 @@ function loadPersistedChanges() {
       if (!SAMPLE_USERS.find(su => su.id === u.id)) SAMPLE_USERS.push(u);
     });
   } catch(e) {}
+
+  // 4. Apply saved professions onto all users (after existing + new users exist)
+  loadProfessions();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4266,7 +4351,7 @@ function getNextAvatarColor() {
 }
 
 function openAddEmpModal() {
-  ['aem-name','aem-username','aem-password'].forEach(id => {
+  ['aem-name','aem-username','aem-password','aem-profession'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const dept = document.getElementById('aem-dept');  if (dept) dept.value = 'المبيعات';
@@ -4283,12 +4368,13 @@ function closeAddEmpModal() {
 }
 
 function saveNewEmployee() {
-  const name     = document.getElementById('aem-name').value.trim();
-  const dept     = document.getElementById('aem-dept').value;
-  const role     = document.getElementById('aem-role').value;
-  const username = document.getElementById('aem-username').value.trim();
-  const password = document.getElementById('aem-password').value.trim();
-  const errEl    = document.getElementById('aem-error');
+  const name       = document.getElementById('aem-name').value.trim();
+  const dept       = document.getElementById('aem-dept').value;
+  const role       = document.getElementById('aem-role').value;
+  const profession = (document.getElementById('aem-profession')?.value || '').trim(); // independent of role
+  const username   = document.getElementById('aem-username').value.trim();
+  const password   = document.getElementById('aem-password').value.trim();
+  const errEl      = document.getElementById('aem-error');
 
   if (!name || !username || !password) {
     if (errEl) { errEl.textContent = '⚠️ يرجى تعبئة الاسم واسم المستخدم وكلمة المرور'; errEl.style.display = ''; }
@@ -4317,8 +4403,8 @@ function saveNewEmployee() {
   });
 
   // Add to SAMPLE_USERS (employees see only their own data; managers see all)
-  const newUser = { id: newUserId, name, initials, role, empId: role === 'employee' ? newEmpId : null, color, username, password };
-  SAMPLE_USERS.push(newUser);
+  const newUser = { id: newUserId, name, initials, role, empId: role === 'employee' ? newEmpId : null, color, username, password, profession };
+  SAMPLE_USERS.push(newUser); // profession travels with the user record (persisted via LS_NEW_USERS)
 
   // Persist new employee + user
   try {
