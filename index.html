@@ -1279,53 +1279,6 @@ body.employee-role { padding-bottom: 0 !important; }
 @media(max-width:400px){
   .login-users-grid{grid-template-columns:1fr;}
 }
-
-/* ── DYNAMIC EVALUATION: factor placeholder + frozen-snapshot view ── */
-.factor-empty{padding:22px 16px;text-align:center;color:var(--text3);font-size:13px;font-weight:600;background:var(--surface2);border:1px dashed var(--border2);border-radius:var(--r);line-height:1.7;}
-.entry-snap-details{margin-top:10px;border-top:1px dashed var(--border);padding-top:8px;}
-.entry-snap-details summary{cursor:pointer;font-size:11px;font-weight:700;color:var(--primary);user-select:none;}
-.snap-table{width:100%;border-collapse:collapse;margin-top:8px;min-width:unset;font-size:11px;}
-.snap-table th{padding:6px 8px;text-align:right;background:var(--surface2);color:var(--text3);font-size:10px;border-bottom:1px solid var(--border);}
-.snap-table td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2);}
-.snap-table tfoot td{font-weight:800;color:var(--text1);background:var(--surface2);}
-
-/* ── TEMPLATE MANAGER (Settings → per-role criteria) ── */
-.tpl-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
-.tpl-role-tab{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;}
-.tpl-role-tab:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);}
-.tpl-role-tab.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(37,99,235,.3);}
-.tpl-tab-icon{font-size:18px;line-height:1;}
-.tpl-tab-add{border-style:dashed;color:var(--success-dark);}
-.tpl-tab-add:hover{border-color:var(--success);color:var(--success);}
-.dark .tpl-tab-add{color:#4ade80;}
-.tpl-role-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;}
-.tpl-role-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
-.tpl-role-name{font-size:15px;font-weight:800;color:var(--text1);}
-.tpl-sum{font-size:12px;font-weight:800;padding:4px 12px;border-radius:20px;}
-.tpl-sum-ok{background:var(--success-light);color:var(--success-dark);border:1px solid #86efac;}
-.tpl-sum-warn{background:var(--danger-light);color:var(--danger-dark);border:1px solid #fca5a5;}
-.dark .tpl-sum-ok{background:#14532d;color:#4ade80;}
-.dark .tpl-sum-warn{background:#450a0a;color:#f87171;}
-.tpl-factor-head,.tpl-factor-row{display:grid;grid-template-columns:64px 1fr 96px 52px;gap:10px;align-items:center;}
-.tpl-factor-head{font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;padding:4px 6px;}
-.tpl-factor-row{padding:8px 6px;border-top:1px solid var(--border);}
-.tpl-inactive{opacity:.5;}
-.tpl-name{font-size:13px;font-weight:700;color:var(--text2);min-width:0;overflow:hidden;text-overflow:ellipsis;}
-.tpl-order{width:100%;padding:6px;text-align:center;border:1.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text1);font-size:13px;font-weight:700;}
-.tpl-weight-wrap{display:flex;align-items:center;gap:4px;}
-.tpl-weight{width:62px;padding:6px;text-align:center;border:1.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text1);font-size:13px;font-weight:800;}
-.tpl-weight-wrap span{font-size:12px;font-weight:700;color:var(--text3);}
-.tpl-empty{padding:10px;text-align:center;color:var(--text4);font-size:12px;}
-.tpl-add-card{background:var(--primary-50);border:1px solid var(--primary-light);border-radius:var(--r);padding:16px;margin-top:8px;}
-.dark .tpl-add-card{background:#172554;}
-.tpl-add-title{font-size:14px;font-weight:800;color:var(--text1);margin-bottom:12px;}
-.tpl-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px;}
-@media(max-width:768px){
-  .tpl-factor-head{display:none;}
-  .tpl-factor-row{grid-template-columns:50px 1fr 78px 46px;gap:6px;}
-  .tpl-name{font-size:12px;}
-  .tpl-add-grid{grid-template-columns:1fr;}
-}
 </style>
 </head>
 <body>
@@ -1607,10 +1560,6 @@ body.employee-role { padding-bottom: 0 !important; }
                 <option value="العمليات">العمليات</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">تاريخ التقييم</label>
-              <input type="date" class="form-input" id="f-date" title="يمكن إدخال تاريخ سابق">
-            </div>
           </div>
 
           <!-- Notes -->
@@ -1619,11 +1568,10 @@ body.employee-role { padding-bottom: 0 !important; }
             <textarea class="form-notes" id="f-notes" rows="2" placeholder="أي ملاحظات على الأداء..."></textarea>
           </div>
 
-          <!-- KPI Inputs (rendered dynamically per the employee's job role) -->
+          <!-- KPI Inputs -->
           <div class="kpi-form-section">
             <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:6px;">معايير التقييم المرجّحة</div>
-            <div class="kpi-form-hint">⬆ ⬇ أو Tab للانتقال بين الحقول · أدخل درجة من 1 إلى 10 لكل معيار</div>
-            <div id="factor-role-info" class="kpi-form-hint" style="display:none;background:var(--success-light);border-right-color:var(--success);"></div>
+            <div class="kpi-form-hint">⬆ ⬇ أو Tab للانتقال بين الحقول · أدخل قيمة من 0 إلى 10 لكل معيار</div>
             <div id="kpi-input-rows"></div>
           </div>
 
@@ -1879,18 +1827,6 @@ body.employee-role { padding-bottom: 0 !important; }
       <div id="weight-editor-container" style="padding:20px 24px;"></div>
     </div>
 
-    <!-- 📋 Per-Role Evaluation Criteria — Template Manager (CEO + manager) -->
-    <div class="settings-section" id="template-settings-section">
-      <div class="settings-section-header">
-        <span class="settings-section-icon">📋</span>
-        <div>
-          <div class="settings-section-title">معايير التقييم حسب الوظيفة</div>
-          <div class="settings-section-sub">أضِف أو عدّل معايير كل وظيفة — تظهر تلقائياً في شاشة التقييم بلا أي تعديل برمجي · مجموع أوزان المعايير المفعّلة لكل وظيفة يجب أن يساوي 100%</div>
-        </div>
-      </div>
-      <div id="template-manager-container" style="padding:20px 24px;"></div>
-    </div>
-
   </div><!-- end view-settings -->
 
 </div><!-- end main -->
@@ -2029,11 +1965,6 @@ body.employee-role { padding-bottom: 0 !important; }
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size:12px;font-weight:800;color:var(--text2);">الوظيفة (تحدد معايير تقييمه)</label>
-          <input class="form-input" id="aem-job" list="aem-job-list" placeholder="مثال: بائع" style="font-size:14px;">
-          <datalist id="aem-job-list"></datalist>
-        </div>
-        <div class="form-group">
           <label class="form-label" style="font-size:12px;font-weight:800;color:var(--text2);">الدور في النظام</label>
           <select class="form-select" id="aem-role" style="font-size:14px;">
             <option value="employee">موظف — يرى أداءه فقط</option>
@@ -2082,22 +2013,18 @@ const KPIs = [
   {id:'appearance',    label:'المظهر العام',              weight:0.03, icon:'👔', color:'#64748b'},
 ];
 
-// NOTE: job_title is the canonical role key linking an employee to their
-// evaluation_templates rows. It is stored normalized (trim + lowercase) via
-// normRole() at read time. Adding a new role = give an employee that job_title
-// and insert template rows — no evaluation-screen code changes required.
 const EMPLOYEES = [
-  {id:1, name:'محمد نصر',            dept:'المبيعات',      job_title:'بائع',       baseScore:85, color:'#2563eb'},
-  {id:2, name:'كريم جبر',            dept:'المبيعات',      job_title:'بائع',       baseScore:78, color:'#22c55e'},
-  {id:3, name:'علي رمضان',           dept:'خدمة العملاء',  job_title:'كاشير',      baseScore:92, color:'#8b5cf6'},
-  {id:4, name:'عبدالرحمن الاشقر',   dept:'المبيعات',      job_title:'بائع',       baseScore:68, color:'#f59e0b'},
-  {id:5, name:'ادهم الكيكي',         dept:'العمليات',      job_title:'عامل نظافة', baseScore:88, color:'#06b6d4'},
-  {id:6, name:'محمد الاسلخ',         dept:'المبيعات',      job_title:'بائع',       baseScore:62, color:'#ef4444'},
-  {id:7, name:'محمد الزيان',         dept:'خدمة العملاء',  job_title:'كاشير',      baseScore:96, color:'#f59e0b'},
-  {id:8, name:'مصطفى الطوي',         dept:'العمليات',      job_title:'عامل نظافة', baseScore:74, color:'#ec4899'},
-  {id:9, name:'عمرو خالد',           dept:'المبيعات',      job_title:'بائع',       baseScore:80, color:'#10b981'},
-  {id:10,name:'عمر الغصناوي',        dept:'خدمة العملاء',  job_title:'كاشير',      baseScore:87, color:'#6366f1'},
-  {id:11,name:'ابراهيم السافوري',    dept:'العمليات',      job_title:'عامل نظافة', baseScore:73, color:'#f97316'},
+  {id:1, name:'محمد نصر',            dept:'المبيعات',      baseScore:85, color:'#2563eb'},
+  {id:2, name:'كريم جبر',            dept:'المبيعات',      baseScore:78, color:'#22c55e'},
+  {id:3, name:'علي رمضان',           dept:'خدمة العملاء',  baseScore:92, color:'#8b5cf6'},
+  {id:4, name:'عبدالرحمن الاشقر',   dept:'المبيعات',      baseScore:68, color:'#f59e0b'},
+  {id:5, name:'ادهم الكيكي',         dept:'العمليات',      baseScore:88, color:'#06b6d4'},
+  {id:6, name:'محمد الاسلخ',         dept:'المبيعات',      baseScore:62, color:'#ef4444'},
+  {id:7, name:'محمد الزيان',         dept:'خدمة العملاء',  baseScore:96, color:'#f59e0b'},
+  {id:8, name:'مصطفى الطوي',         dept:'العمليات',      baseScore:74, color:'#ec4899'},
+  {id:9, name:'عمرو خالد',           dept:'المبيعات',      baseScore:80, color:'#10b981'},
+  {id:10,name:'عمر الغصناوي',        dept:'خدمة العملاء',  baseScore:87, color:'#6366f1'},
+  {id:11,name:'ابراهيم السافوري',    dept:'العمليات',      baseScore:73, color:'#f97316'},
 ];
 
 const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو'];
@@ -2182,7 +2109,6 @@ function init() {
   loadPersistedChanges(); // apply saved credential edits + new employees before login
   setNavDate();
   loadEntries();
-  loadEvalDB();           // load/seed evaluation_templates + evaluations collections
   // Auth-aware boot: show login, then check session
   checkAutoLogin();
 }
@@ -3233,112 +3159,8 @@ function exportTableCSV() {
   showToast('تم تصدير البيانات بنجاح ✅', 'success');
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  DYNAMIC EVALUATION DATA LAYER  (per-role criteria — data driven)
-//  ───────────────────────────────────────────────────────────────────────
-//  Two persisted JSON collections in localStorage act as the data layer:
-//    • evaluation_templates  → one row per factor per role
-//    • evaluations           → saved results, each with a frozen snapshot
-//  Factors, weights and counts are read ONLY from here — never from JS/HTML
-//  constants. Add a role or criterion by INSERTING rows (Settings → Template
-//  Manager). Deprecate a factor by setting is_active=false (never hard-delete).
-// ═══════════════════════════════════════════════════════════════════════
-const LS_EVAL_TEMPLATES = 'str_eval_templates_v1';
-const LS_EVALUATIONS    = 'str_evaluations_v1';
-const ROLE_DEFAULT_KEY  = 'default';   // reserved fallback role
-
-// Canonical role key normalization — applied on BOTH sides of every compare
-function normRole(s){ return String(s == null ? '' : s).trim().toLowerCase(); }
-
-// ── SEED DATA (inserted once on first run) ──
-// weight is a percentage 0–100. factor_name is Arabic to match the UI.
-const SEED_TEMPLATES = [
-  // بائع (Salesperson)
-  {job_title:'بائع', factor_name:'حسن التعامل والتواصل مع العملاء', weight:30, display_order:1},
-  {job_title:'بائع', factor_name:'تحقيق المبيعات',                  weight:25, display_order:2},
-  {job_title:'بائع', factor_name:'الالتزام بالحضور',                weight:20, display_order:3},
-  {job_title:'بائع', factor_name:'الالتزام بالتعليمات',             weight:10, display_order:4},
-  {job_title:'بائع', factor_name:'إنجاز المهام اليومية',            weight:7,  display_order:5},
-  {job_title:'بائع', factor_name:'التعاون وروح الفريق',             weight:5,  display_order:6},
-  {job_title:'بائع', factor_name:'المظهر العام',                    weight:3,  display_order:7},
-  // كاشير (Cashier)
-  {job_title:'كاشير', factor_name:'دقة المعاملات',                  weight:30, display_order:1},
-  {job_title:'كاشير', factor_name:'إغلاق الصندوق بشكل صحيح',        weight:25, display_order:2},
-  {job_title:'كاشير', factor_name:'سرعة الخدمة',                    weight:15, display_order:3},
-  {job_title:'كاشير', factor_name:'التفاعل مع العملاء',             weight:15, display_order:4},
-  {job_title:'كاشير', factor_name:'الالتزام بالحضور',               weight:10, display_order:5},
-  {job_title:'كاشير', factor_name:'التعامل مع النقد والمسؤولية',    weight:5,  display_order:6},
-  // عامل نظافة (Cleaner)
-  {job_title:'عامل نظافة', factor_name:'جودة التنظيف ونظافة مكان العمل', weight:35, display_order:1},
-  {job_title:'عامل نظافة', factor_name:'الالتزام بجدول التنظيف',          weight:25, display_order:2},
-  {job_title:'عامل نظافة', factor_name:'الالتزام بالحضور',                weight:15, display_order:3},
-  {job_title:'عامل نظافة', factor_name:'العناية بالمعدات والأدوات',       weight:10, display_order:4},
-  {job_title:'عامل نظافة', factor_name:'الاستجابة للمهام الموكلة',        weight:10, display_order:5},
-  {job_title:'عامل نظافة', factor_name:'التعاون وروح الفريق',             weight:5,  display_order:6},
-  // default (reserved fallback)
-  {job_title:'default', factor_name:'الالتزام بالحضور',     weight:30, display_order:1},
-  {job_title:'default', factor_name:'إنجاز المهام اليومية', weight:25, display_order:2},
-  {job_title:'default', factor_name:'الالتزام بالتعليمات',  weight:20, display_order:3},
-  {job_title:'default', factor_name:'التعاون وروح الفريق',  weight:15, display_order:4},
-  {job_title:'default', factor_name:'المظهر العام',         weight:10, display_order:5},
-];
-
-let evalTemplates = [];   // evaluation_templates collection
-let evaluations   = [];   // evaluations (results) collection
-
-function loadEvalDB(){
-  // templates — seed on first run
-  try { evalTemplates = JSON.parse(localStorage.getItem(LS_EVAL_TEMPLATES) || 'null'); }
-  catch(e){ evalTemplates = null; }
-  if (!Array.isArray(evalTemplates) || !evalTemplates.length){
-    evalTemplates = SEED_TEMPLATES.map((t, i) => ({
-      id:            i + 1,
-      job_title:     normRole(t.job_title),
-      factor_name:   t.factor_name,
-      weight:        Number(t.weight),
-      display_order: Number(t.display_order),
-      is_active:     true,
-    }));
-    persistTemplates();
-  }
-  // evaluations
-  try { evaluations = JSON.parse(localStorage.getItem(LS_EVALUATIONS) || '[]'); }
-  catch(e){ evaluations = []; }
-  if (!Array.isArray(evaluations)) evaluations = [];
-}
-
-function persistTemplates(){ try{ localStorage.setItem(LS_EVAL_TEMPLATES, JSON.stringify(evalTemplates)); }catch(e){} }
-function persistEvaluations(){ try{ localStorage.setItem(LS_EVALUATIONS, JSON.stringify(evaluations)); }catch(e){} }
-
-function nextTemplateId(){ return evalTemplates.reduce((m,t)=>Math.max(m, t.id||0), 0) + 1; }
-function nextEvaluationId(){ return evaluations.reduce((m,e)=>Math.max(m, e.id||0), 0) + 1; }
-
-// Active factors for a role, ordered by display_order. Falls back to "default".
-function getActiveFactors(jobTitle){
-  const role = normRole(jobTitle);
-  let rows = evalTemplates.filter(t => normRole(t.job_title) === role && t.is_active);
-  if (!rows.length && role !== ROLE_DEFAULT_KEY){
-    rows = evalTemplates.filter(t => normRole(t.job_title) === ROLE_DEFAULT_KEY && t.is_active);
-  }
-  return rows.slice().sort((a,b)=> (a.display_order - b.display_order) || (a.id - b.id));
-}
-
-// All distinct role keys present in templates (+ guarantee "default")
-function getAllRoles(){
-  const set = [];
-  evalTemplates.forEach(t => { const r = normRole(t.job_title); if (r && !set.includes(r)) set.push(r); });
-  if (!set.includes(ROLE_DEFAULT_KEY)) set.push(ROLE_DEFAULT_KEY);
-  return set;
-}
-
-// Resolve an employee record from the name shown in the entry dropdown
-function getEmployeeByName(name){ return EMPLOYEES.find(e => e.name === name) || null; }
-
-// Friendly label for a role key (Arabic key shown as-is; "default" → افتراضي)
-function roleLabel(key){ return normRole(key) === ROLE_DEFAULT_KEY ? 'الوظائف الأخرى (افتراضي)' : key; }
-
 // ═══════════════════════════════════════════════════
-//  ENTRY FORM  (legacy savedEntries store kept for back-compat; unused by UI)
+//  ENTRY FORM
 // ═══════════════════════════════════════════════════
 const ENTRY_STORAGE_KEY = 'str_kpi_entries_v2';
 let savedEntries = [];
@@ -3351,24 +3173,42 @@ function persistEntries() {
   localStorage.setItem(ENTRY_STORAGE_KEY, JSON.stringify(savedEntries));
 }
 
-// Factors currently rendered in the form (loaded from the data layer per role)
-let currentFactors = [];
-
 function initEntryView() {
-  // Set today's date (header label + editable, back-fillable date input)
+  // Set today's date
   const now = new Date();
   const opts = {weekday:'long', year:'numeric', month:'long', day:'numeric'};
-  const disp = document.getElementById('entry-date-display');
-  if (disp) disp.textContent = now.toLocaleDateString('ar-EG', opts);
-  const dateEl = document.getElementById('f-date');
-  if (dateEl && !dateEl.value) dateEl.value = now.toISOString().slice(0, 10);
+  document.getElementById('entry-date-display').textContent = now.toLocaleDateString('ar-EG', opts);
+
+  // Build KPI input rows
+  const container = document.getElementById('kpi-input-rows');
+  container.innerHTML = KPIs.map((k, i) => `
+    <div class="kpi-input-row" id="kpi-row-${i}">
+      <div class="kpi-row-idx">${i + 1}</div>
+      <span class="kpi-row-icon">${k.icon}</span>
+      <div class="kpi-row-label">${k.label}</div>
+      <span class="kpi-row-weight">${(k.weight * 100).toFixed(0)}%</span>
+      <div class="kpi-mini-bar">
+        <div class="kpi-mini-fill" id="kpi-mini-${i}" style="width:0%;background:${k.color};"></div>
+      </div>
+      <input
+        type="number" min="0" max="10" step="0.5"
+        class="kpi-score-input"
+        id="kpi-input-${i}"
+        value=""
+        placeholder="0"
+        oninput="onKpiInput(${i})"
+        onkeydown="kpiKeyNav(event, ${i})"
+        onfocus="document.getElementById('kpi-row-${i}').classList.add('focused')"
+        onblur="document.getElementById('kpi-row-${i}').classList.remove('focused')"
+      >
+    </div>
+  `).join('');
 
   syncEmpDropdown();
-  renderFactorRows();      // placeholder until an employee is chosen
   renderEntriesList();
 
   // Attach draft-save listeners to all top-form inputs (once per view init)
-  ['f-emp','f-rater','f-dept','f-period','f-date'].forEach(id => {
+  ['f-emp','f-rater','f-dept','f-period'].forEach(id => {
     const el = document.getElementById(id);
     if (el && !el._draftBound) { el.addEventListener('change', scheduleDraftSave); el._draftBound = true; }
   });
@@ -3377,15 +3217,14 @@ function initEntryView() {
     if (el && !el._draftBound) { el.addEventListener('input', scheduleDraftSave); el._draftBound = true; }
   });
 
-  // Restore any in-progress draft (after factor inputs are built)
+  // Restore any in-progress draft (after KPI inputs are built)
   restoreDraft();
 }
 
 function onEmpSelectChange(sel) {
   const wrap = document.getElementById('f-emp-custom');
-  if (wrap) { wrap.style.display = sel.value === '__custom__' ? '' : 'none'; if (sel.value !== '__custom__') wrap.value = ''; }
-  renderFactorRows();      // ← load THIS employee's role-specific factors
-  scheduleDraftSave();
+  wrap.style.display = sel.value === '__custom__' ? '' : 'none';
+  if (sel.value !== '__custom__') wrap.value = '';
 }
 
 function onRaterSelectChange(sel) {
@@ -3406,218 +3245,158 @@ function getEntryRaterName() {
   return sel.value;
 }
 
-// Resolve the canonical role of the selected employee (fallback → default)
-function resolveEntryJobTitle() {
-  const name = getEntryEmpName();
-  const emp  = name ? getEmployeeByName(name) : null;
-  return (emp && emp.job_title) ? normRole(emp.job_title) : ROLE_DEFAULT_KEY;
-}
+function onKpiInput(idx) {
+  const input = document.getElementById('kpi-input-' + idx);
+  let v = parseFloat(input.value) || 0;
+  if (v < 0) { v = 0; input.value = 0; }
+  if (v > 10) { v = 10; input.value = 10; }
+  input.classList.toggle('invalid', input.value !== '' && (parseFloat(input.value) < 0 || parseFloat(input.value) > 10));
 
-function clampScore(v) { if (isNaN(v)) return 0; if (v < 0) return 0; if (v > 10) return 10; return v; }
+  // Update mini bar (0-10 → 0-100%)
+  const fill = document.getElementById('kpi-mini-' + idx);
+  if (fill) fill.style.width = (v * 10) + '%';
 
-// ── Build the factor rows generically, N factors, from the data layer ──
-function renderFactorRows() {
-  const container = document.getElementById('kpi-input-rows');
-  if (!container) return;
-  const sel = document.getElementById('f-emp');
-  const chosen = sel ? sel.value : '';
-
-  if (!chosen) {
-    currentFactors = [];
-    container.innerHTML = `<div class="factor-empty">👆 اختر اسم الموظف أولاً لعرض معايير التقييم الخاصة بوظيفته</div>`;
-    updateRoleInfo('', 0, 0);
-    recalcTotal();
-    return;
-  }
-
-  const role = resolveEntryJobTitle();
-  currentFactors = getActiveFactors(role);   // active rows, ordered, with default fallback
-
-  if (!currentFactors.length) {
-    container.innerHTML = `<div class="factor-empty">⚠️ لا توجد معايير مفعّلة لهذه الوظيفة — أضِفها من «الإعدادات ← معايير التقييم حسب الوظيفة».</div>`;
-    updateRoleInfo(role, 0, 0);
-    recalcTotal();
-    return;
-  }
-
-  const sumW = currentFactors.reduce((s, f) => s + Number(f.weight), 0);
-  container.innerHTML = currentFactors.map((f, i) => `
-    <div class="kpi-input-row" id="factor-row-${i}" data-factor-id="${f.id}">
-      <div class="kpi-row-idx">${i + 1}</div>
-      <span class="kpi-row-icon">📌</span>
-      <div class="kpi-row-label">${f.factor_name}</div>
-      <span class="kpi-row-weight">${Number(f.weight)}%</span>
-      <div class="kpi-mini-bar">
-        <div class="kpi-mini-fill" id="factor-mini-${i}" style="width:0%;background:var(--primary);"></div>
-      </div>
-      <input type="number" min="1" max="10" step="0.5" class="kpi-score-input" id="factor-input-${i}"
-        value="" placeholder="0"
-        oninput="onFactorInput(${i})" onkeydown="factorKeyNav(event, ${i})"
-        onfocus="document.getElementById('factor-row-${i}').classList.add('focused')"
-        onblur="document.getElementById('factor-row-${i}').classList.remove('focused')">
-    </div>
-  `).join('');
-
-  updateRoleInfo(role, currentFactors.length, sumW);
   recalcTotal();
+  scheduleDraftSave(); // auto-save draft on every keystroke (debounced 800ms)
 }
 
-// Small banner above the factor list showing which role's criteria are loaded
-function updateRoleInfo(role, count, sumW) {
-  const el = document.getElementById('factor-role-info');
-  if (!el) return;
-  if (!count) { el.style.display = 'none'; return; }
-  const warn = sumW !== 100 ? ` · <span style="color:var(--danger);font-weight:800;">مجموع الأوزان ${sumW}% ≠ 100%</span>` : '';
-  el.style.display = '';
-  el.innerHTML = `📋 معايير وظيفة: <strong>${roleLabel(role)}</strong> · عدد المعايير: <strong>${count}</strong>${warn}`;
-}
-
-function onFactorInput(idx) {
-  const input = document.getElementById('factor-input-' + idx);
-  if (!input) return;
-  let v = parseFloat(input.value);
-  if (!isNaN(v) && v > 10) { v = 10; input.value = 10; }
-  const num = parseFloat(input.value);
-  input.classList.toggle('invalid', input.value !== '' && (isNaN(num) || num < 1 || num > 10));
-  const fill = document.getElementById('factor-mini-' + idx);
-  if (fill) fill.style.width = (clampScore(parseFloat(input.value) || 0) * 10) + '%';
-  recalcTotal();
-  scheduleDraftSave();
-}
-
-function factorKeyNav(e, idx) {
-  const last = currentFactors.length - 1;
+function kpiKeyNav(e, idx) {
+  const last = KPIs.length - 1;
   if (e.key === 'ArrowDown' || e.key === 'Enter') {
     e.preventDefault();
-    const next = document.getElementById('factor-input-' + Math.min(idx + 1, last));
-    if (next) next.focus();
+    const next = Math.min(idx + 1, last);
+    document.getElementById('kpi-input-' + next).focus();
   }
   if (e.key === 'ArrowUp') {
     e.preventDefault();
-    const prev = document.getElementById('factor-input-' + Math.max(idx - 1, 0));
-    if (prev) prev.focus();
+    const prev = Math.max(idx - 1, 0);
+    document.getElementById('kpi-input-' + prev).focus();
   }
 }
 
-// Live total: contribution = (score/10) × weight ; total = Σ contribution (0–100)
 function recalcTotal() {
-  let total = 0, allFilled = currentFactors.length > 0;
-  currentFactors.forEach((f, i) => {
-    const inp = document.getElementById('factor-input-' + i);
-    const raw = inp ? inp.value : '';
-    if (raw === '') allFilled = false;
-    total += (clampScore(parseFloat(raw) || 0) / 10) * Number(f.weight);
+  let total = 0;
+  let allFilled = true;
+  let rawWeighted = 0;
+  KPIs.forEach((k, i) => {
+    const inp = document.getElementById('kpi-input-' + i);
+    const v = parseFloat(inp.value) || 0;
+    if (inp.value === '') allFilled = false;
+    // score out of 10 → convert to % by ×10, then apply weight
+    rawWeighted += v * k.weight;
   });
-  total = Math.round(total * 10) / 10;
+  // rawWeighted is 0–10 (since weights sum to 1 and each score is 0–10)
+  // multiply by 10 to get final percentage 0–100
+  total = Math.round(rawWeighted * 10 * 10) / 10;
 
+  document.getElementById('form-total-val').textContent = total.toFixed(1) + '%';
   const status = getStatus(total);
-  const tv = document.getElementById('form-total-val');
-  if (tv) tv.textContent = total.toFixed(1) + '%';
-  const gb = document.getElementById('form-grade-badge');
-  if (gb) gb.textContent = currentFactors.length ? status.label : '—';
-  const ps = document.getElementById('form-pct-strip');
-  if (ps) ps.textContent = !currentFactors.length ? ''
-    : (allFilled ? `النتيجة النهائية المرجّحة: ${total.toFixed(1)}%` : 'أدخل جميع الدرجات لعرض النتيجة الكاملة');
+  document.getElementById('form-grade-badge').textContent = status.label;
+  const raw10 = Math.round(rawWeighted * 10) / 10;
+  document.getElementById('form-pct-strip').textContent = allFilled
+    ? `المجموع المرجّح: ${raw10.toFixed(2)} / 10  ←  النسبة المئوية: ${total.toFixed(1)}%`
+    : 'أدخل جميع القيم لعرض النتيجة الكاملة';
 
+  // Sync mobile sticky score bar (live update as user types)
   const mVal   = document.getElementById('m-score-val');
   const mGrade = document.getElementById('m-score-grade');
   if (mVal)   mVal.textContent   = total.toFixed(1) + '%';
-  if (mGrade) mGrade.textContent = currentFactors.length ? status.label : '—';
+  if (mGrade) mGrade.textContent = status.label;
 }
 
-// Save → one evaluations row with a FROZEN factors_snapshot
 function saveEntry() {
   const empName = getEntryEmpName();
   if (!empName) { showToast('⚠️ يرجى اختيار اسم الموظف', 'warning'); document.getElementById('f-emp').focus(); return; }
-  if (!currentFactors.length) { showToast('⚠️ لا توجد معايير تقييم لهذه الوظيفة', 'warning'); return; }
 
+  const scores = {};
   let valid = true;
-  const snapshot = currentFactors.map((f, i) => {
-    const inp = document.getElementById('factor-input-' + i);
-    const raw = inp ? inp.value : '';
-    const v = parseFloat(raw);
-    if (raw === '' || isNaN(v) || v < 1 || v > 10) { valid = false; if (inp) inp.classList.add('invalid'); }
-    return { factor_name: f.factor_name, weight: Number(f.weight), score: isNaN(v) ? 0 : v };
+  KPIs.forEach((k, i) => {
+    const v = parseFloat(document.getElementById('kpi-input-' + i).value);
+    if (isNaN(v) || v < 0 || v > 10) { valid = false; document.getElementById('kpi-input-' + i).classList.add('invalid'); }
+    scores[k.id] = isNaN(v) ? 0 : v;
   });
-  if (!valid) { showToast('⚠️ أدخل جميع الدرجات (من 1 إلى 10)', 'warning'); return; }
+  if (!valid) { showToast('⚠️ تحقق من القيم - يجب أن تكون بين 0 و 10', 'warning'); return; }
 
-  const total    = Math.round(snapshot.reduce((s, f) => s + (f.score / 10) * f.weight, 0) * 10) / 10;
-  const emp      = getEmployeeByName(empName);
-  const jobTitle = resolveEntryJobTitle();
-  const dateEl   = document.getElementById('f-date');
-  const evalDate = (dateEl && dateEl.value) ? dateEl.value : new Date().toISOString().slice(0, 10);
+  // weighted sum out of 10, convert to %
+  const rawWeighted = KPIs.reduce((s, k) => s + scores[k.id] * k.weight, 0);
+  const final = Math.round(rawWeighted * 10 * 10) / 10;
+  const now = new Date();
 
-  const row = {
-    id:               nextEvaluationId(),
-    employee_id:      emp ? emp.id : null,
-    employee_name:    empName,              // convenience for display
-    job_title:        jobTitle,             // snapshot of the role at eval time
-    evaluator:        getEntryRaterName() || (currentUser && currentUser.name) || '—',
-    evaluation_date:  evalDate,             // back-fillable
-    factors_snapshot: snapshot,             // FROZEN [{factor_name, weight, score}]
-    total_score:      total,                // computed 0–100
-    notes:            (document.getElementById('f-notes').value || '').trim(),
-    dept:             document.getElementById('f-dept').value,
-    period:           document.getElementById('f-period').value,
-    created_at:       new Date().toISOString(),
+  const entry = {
+    id: Date.now(),
+    empName,
+    rater: getEntryRaterName() || '—',
+    dept: document.getElementById('f-dept').value,
+    period: document.getElementById('f-period').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    scores,
+    final,
+    dateISO: now.toISOString(),
+    dateLabel: now.toLocaleDateString('ar-EG', {weekday:'long', year:'numeric', month:'long', day:'numeric'}),
+    timeLabel: now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}),
   };
 
-  evaluations.unshift(row);
-  persistEvaluations();
+  savedEntries.unshift(entry);
+  persistEntries();
   renderEntriesList();
-  clearDraft();
-  showMobileSaveSuccess(empName, total.toFixed(1));
-  showToast(`✅ تم حفظ تقييم ${empName} — النتيجة: ${total.toFixed(1)}%`, 'success');
-  if (typeof checkLowPerfAlert === 'function') checkLowPerfAlert(empName, total);
+  clearDraft(); // wipe draft — data is now saved
+  showMobileSaveSuccess(empName, final.toFixed(1)); // animated success on mobile
+  showToast(`✅ تم حفظ تقييم ${empName} بنجاح — النتيجة: ${final.toFixed(1)}%`, 'success');
+  // 🔔 Low-performance notification (uses configurable threshold)
+  if (typeof checkLowPerfAlert === 'function') checkLowPerfAlert(empName, final);
   resetEntryForm();
 }
 
 function resetEntryForm() {
-  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
-  set('f-emp', '');
-  const ec = document.getElementById('f-emp-custom'); if (ec) { ec.value = ''; ec.style.display = 'none'; }
-  set('f-rater', '');
-  const rc = document.getElementById('f-rater-custom'); if (rc) { rc.value = ''; rc.style.display = 'none'; }
-  set('f-notes', '');
-  set('f-period', 'صباحي');
-  set('f-dept', 'المبيعات');
-  set('f-date', new Date().toISOString().slice(0, 10));
-  renderFactorRows();   // emp cleared → placeholder; totals reset inside
+  document.getElementById('f-emp').value = '';
+  document.getElementById('f-emp-custom').style.display = 'none';
+  document.getElementById('f-emp-custom').value = '';
+  document.getElementById('f-rater').value = '';
+  document.getElementById('f-rater-custom').style.display = 'none';
+  document.getElementById('f-rater-custom').value = '';
+  document.getElementById('f-notes').value = '';
+  document.getElementById('f-period').value = 'صباحي';
+  document.getElementById('f-dept').value = 'المبيعات';
+  KPIs.forEach((_, i) => {
+    document.getElementById('kpi-input-' + i).value = '';
+    document.getElementById('kpi-input-' + i).classList.remove('invalid');
+    document.getElementById('kpi-mini-' + i).style.width = '0%';
+  });
+  document.getElementById('form-total-val').textContent = '0%';
+  document.getElementById('form-grade-badge').textContent = '—';
+  document.getElementById('form-pct-strip').textContent = '';
+  // Reset mobile sticky bar too
+  const mVal = document.getElementById('m-score-val');
+  const mGrade = document.getElementById('m-score-grade');
+  if (mVal)   mVal.textContent   = '0%';
+  if (mGrade) mGrade.textContent = '—';
   clearDraft();
 }
 
 function deleteEntry(id) {
-  evaluations = evaluations.filter(e => e.id !== id);
-  persistEvaluations();
+  savedEntries = savedEntries.filter(e => e.id !== id);
+  persistEntries();
   renderEntriesList();
   showToast('🗑 تم حذف التقييم', 'info');
 }
 
 function clearAllEntries() {
-  if (!evaluations.length) return;
+  if (!savedEntries.length) return;
   if (!confirm('هل أنت متأكد من حذف جميع التقييمات؟')) return;
-  evaluations = [];
-  persistEvaluations();
+  savedEntries = [];
+  persistEntries();
   renderEntriesList();
   showToast('🗑 تم حذف جميع التقييمات', 'info');
 }
 
-// Human-readable date for a stored YYYY-MM-DD evaluation_date
-function formatEvalDate(d) {
-  try { const dt = new Date(d + 'T00:00:00'); if (!isNaN(dt)) return dt.toLocaleDateString('ar-EG', {year:'numeric', month:'long', day:'numeric'}); } catch(e) {}
-  return d || '—';
-}
-
-// Reads from the evaluations collection; each card shows the FROZEN snapshot,
-// so a reopened evaluation always reflects the weights it was scored against.
 function renderEntriesList() {
   const searchQ = (document.getElementById('entries-search')?.value || '').toLowerCase();
-  const filtered = evaluations.filter(e =>
-    !searchQ || (e.employee_name || '').toLowerCase().includes(searchQ) || (e.evaluator || '').toLowerCase().includes(searchQ)
+  const filtered = savedEntries.filter(e =>
+    !searchQ || e.empName.toLowerCase().includes(searchQ) || (e.rater || '').toLowerCase().includes(searchQ)
   );
 
   const badge = document.getElementById('entries-count-badge');
-  if (badge) badge.textContent = `${evaluations.length} تقييم`;
+  if (badge) badge.textContent = `${savedEntries.length} تقييم`;
 
   const container = document.getElementById('entries-list-container');
   if (!container) return;
@@ -3626,47 +3405,41 @@ function renderEntriesList() {
     container.innerHTML = `
       <div class="empty-entries">
         <div class="empty-entries-icon">📋</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text3);margin-bottom:6px;">${evaluations.length ? 'لا توجد نتائج' : 'لا توجد تقييمات محفوظة'}</div>
-        <div style="font-size:12px;color:var(--text4);">${evaluations.length ? 'جرب كلمة بحث أخرى' : 'ابدأ بإضافة تقييم موظف جديد'}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text3);margin-bottom:6px;">${savedEntries.length ? 'لا توجد نتائج' : 'لا توجد تقييمات محفوظة'}</div>
+        <div style="font-size:12px;color:var(--text4);">${savedEntries.length ? 'جرب كلمة بحث أخرى' : 'ابدأ بإضافة تقييم موظف جديد'}</div>
       </div>`;
     return;
   }
 
-  container.innerHTML = filtered.map(ev => {
-    const status = getStatus(ev.total_score);
-    const scoreColor = getScoreColor(ev.total_score);
-    const snap = Array.isArray(ev.factors_snapshot) ? ev.factors_snapshot : [];
-    const sumW = snap.reduce((s, f) => s + Number(f.weight), 0);
-    const top  = snap.length ? snap.reduce((b, f) => (f.score * f.weight) > (b.score * b.weight) ? f : b, snap[0]) : null;
+  container.innerHTML = filtered.map(entry => {
+    const status = getStatus(entry.final);
+    const scoreColor = getScoreColor(entry.final);
+    // topKpi: highest weighted contribution (score × weight)
+    const topKpi = KPIs.reduce((best, k) =>
+      (entry.scores[k.id] * k.weight) > (entry.scores[best.id] * best.weight) ? k : best, KPIs[0]);
     return `
       <div class="entry-item-card">
-        <button class="entry-item-del" onclick="event.stopPropagation();deleteEntry(${ev.id})" title="حذف">✕</button>
+        <button class="entry-item-del" onclick="event.stopPropagation();deleteEntry(${entry.id})" title="حذف">✕</button>
         <div class="entry-item-top">
           <div>
-            <div class="entry-item-name">${ev.employee_name || '—'}</div>
-            <div class="entry-item-meta">📅 ${formatEvalDate(ev.evaluation_date)} · 💼 ${roleLabel(ev.job_title)}${ev.period ? ' · ' + ev.period : ''}</div>
-            ${ev.evaluator && ev.evaluator !== '—' ? `<div class="entry-item-meta">👤 المقيّم: ${ev.evaluator}</div>` : ''}
-            ${ev.notes ? `<div class="entry-item-meta" style="color:var(--text2);font-style:italic;">💬 ${ev.notes}</div>` : ''}
+            <div class="entry-item-name">${entry.empName}</div>
+            <div class="entry-item-meta">📅 ${entry.dateLabel} · ${entry.timeLabel} · ${entry.period} · ${entry.dept}</div>
+            ${entry.rater && entry.rater !== '—' ? `<div class="entry-item-meta">👤 المشرف: ${entry.rater}</div>` : ''}
+            ${entry.notes ? `<div class="entry-item-meta" style="color:var(--text2);font-style:italic;">💬 ${entry.notes}</div>` : ''}
           </div>
           <div style="text-align:left;">
-            <div class="entry-item-score" style="color:${scoreColor};">${Number(ev.total_score).toFixed(1)}%</div>
+            <div class="entry-item-score" style="color:${scoreColor};">${entry.final.toFixed(1)}%</div>
             <span class="status-badge ${status.cls}" style="font-size:10px;">${status.label}</span>
           </div>
         </div>
         <div class="entry-item-kpis">
-          ${snap.map(f => `<div class="entry-kpi-chip" title="${f.factor_name} · وزن ${f.weight}%">${f.factor_name.length > 14 ? f.factor_name.slice(0, 13) + '…' : f.factor_name}: ${f.score}/10</div>`).join('')}
+          ${KPIs.map(k => `
+            <div class="entry-kpi-chip" style="border-color:${k.color}40;color:${entry.scores[k.id] >= 8 ? k.color : 'var(--text3)'};">
+              ${k.icon} ${entry.scores[k.id]}/10
+            </div>
+          `).join('')}
         </div>
-        <details class="entry-snap-details">
-          <summary>عرض البطاقة المجمّدة (الأوزان وقت التقييم)</summary>
-          <table class="snap-table">
-            <thead><tr><th>المعيار</th><th>الوزن</th><th>الدرجة</th><th>المساهمة</th></tr></thead>
-            <tbody>
-              ${snap.map(f => `<tr><td>${f.factor_name}</td><td>${f.weight}%</td><td>${f.score}/10</td><td>${((f.score / 10) * f.weight).toFixed(1)}</td></tr>`).join('')}
-            </tbody>
-            <tfoot><tr><td>الإجمالي</td><td>${sumW}%</td><td>—</td><td>${Number(ev.total_score).toFixed(1)}</td></tr></tfoot>
-          </table>
-        </details>
-        ${top ? `<div style="margin-top:8px;font-size:11px;color:var(--success);font-weight:700;">⭐ أعلى مساهمة: ${top.factor_name} (${top.score}/10)</div>` : ''}
+        <div style="margin-top:8px;font-size:11px;color:var(--success);font-weight:700;">⭐ أفضل معيار: ${topKpi.label} (${entry.scores[topKpi.id]}/10)</div>
       </div>
     `;
   }).join('');
@@ -3682,19 +3455,19 @@ let _draftTimer;
 
 function saveDraft() {
   try {
-    const v = id => (document.getElementById(id)?.value || '');
     const d = {
-      emp:        v('f-emp'),
-      empCustom:  v('f-emp-custom'),
-      rater:      v('f-rater'),
-      raterCustom:v('f-rater-custom'),
-      dept:       v('f-dept'),
-      period:     v('f-period'),
-      notes:      v('f-notes'),
-      date:       v('f-date'),
+      emp:        document.getElementById('f-emp')?.value        || '',
+      empCustom:  document.getElementById('f-emp-custom')?.value || '',
+      rater:      document.getElementById('f-rater')?.value      || '',
+      raterCustom:document.getElementById('f-rater-custom')?.value || '',
+      dept:       document.getElementById('f-dept')?.value       || '',
+      period:     document.getElementById('f-period')?.value     || '',
+      notes:      document.getElementById('f-notes')?.value      || '',
       scores: {}
     };
-    currentFactors.forEach((f, i) => { d.scores[i] = v('factor-input-' + i); });
+    KPIs.forEach((k, i) => {
+      d.scores[i] = document.getElementById('kpi-input-' + i)?.value || '';
+    });
     localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
   } catch(e) {}
 }
@@ -3722,16 +3495,11 @@ function restoreDraft() {
     setVal('f-dept', d.dept);
     setVal('f-period', d.period);
     setVal('f-notes', d.notes);
-    if (d.date) setVal('f-date', d.date);
-
-    // Rebuild this employee's factor rows, THEN restore the entered scores
-    renderFactorRows();
     let hasScores = false;
-    if (d.scores) Object.keys(d.scores).forEach(i => {
-      const val = d.scores[i];
-      if (val !== undefined && val !== '') {
-        const el = document.getElementById('factor-input-' + i);
-        if (el) { el.value = val; onFactorInput(parseInt(i)); hasScores = true; }
+    KPIs.forEach((k, i) => {
+      if (d.scores[i] !== undefined && d.scores[i] !== '') {
+        const el = document.getElementById('kpi-input-' + i);
+        if (el) { el.value = d.scores[i]; onKpiInput(i); hasScores = true; }
       }
     });
     if (hasScores) showToast('📝 تم استرداد مسودة التقييم تلقائياً', 'info');
@@ -4225,13 +3993,9 @@ function renderSettings() {
   const isCeo     = role === 'ceo';
   const isManager = role === 'manager';
 
-  const tplSec = document.getElementById('template-settings-section');
-
   if (notifSec)  notifSec.style.display  = isCeo ? '' : 'none';
   if (usersSec)  usersSec.style.display  = isCeo ? '' : 'none';
-  // Legacy sales-only KPI weights panel hidden — the per-role Template Manager replaces it
-  if (weightSec) weightSec.style.display = 'none';
-  if (tplSec)    tplSec.style.display    = (isCeo || isManager) ? '' : 'none';
+  if (weightSec) weightSec.style.display = (isCeo || isManager) ? '' : 'none';
 
   // Update section title for managers
   const titleEl = document.querySelector('#view-settings .section-title');
@@ -4255,165 +4019,6 @@ function renderSettings() {
 
   // Always render weight editor for CEO and manager
   if (isCeo || isManager) renderWeightEditor();
-  if (isCeo || isManager) renderTemplateManager();
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-//  TEMPLATE MANAGER — add/edit per-role evaluation criteria (data driven)
-//  Adding a role or factor here = inserting rows only; the evaluation screen
-//  picks them up automatically. Factors are deprecated via is_active, never
-//  hard-deleted.
-// ═══════════════════════════════════════════════════════════════════════
-// Active role tab in the Template Manager
-let tplActiveRole = null;
-
-// UI-only icon per role (presentation; factor DATA still lives in the data layer)
-const ROLE_ICONS = { 'بائع':'🛍️', 'كاشير':'💳', 'عامل نظافة':'🧹', 'default':'👥' };
-function roleIcon(role){ return ROLE_ICONS[normRole(role)] || '🏷️'; }
-
-function renderTemplateManager() {
-  const host = document.getElementById('template-manager-container');
-  if (!host) return;
-
-  const roles = getAllRoles();
-  let tabRoles = roles.slice();
-  // keep a just-created role (no factors yet) visible as the active tab
-  if (tplActiveRole && !tabRoles.includes(tplActiveRole)) tabRoles.push(tplActiveRole);
-  if (!tplActiveRole || !tabRoles.includes(tplActiveRole)) tplActiveRole = tabRoles[0];
-  window._tplTabRoles = tabRoles;
-
-  // ── Role tab bar (icons) ──
-  const tabs = tabRoles.map((r, i) => `
-    <button class="tpl-role-tab ${r === tplActiveRole ? 'active' : ''}" onclick="selectTplRole(${i})">
-      <span class="tpl-tab-icon">${roleIcon(r)}</span><span>${roleLabel(r)}</span>
-    </button>`).join('');
-
-  // ── Selected role's factors ──
-  const role = tplActiveRole;
-  const rows = evalTemplates
-    .filter(t => normRole(t.job_title) === role)
-    .sort((a, b) => (a.display_order - b.display_order) || (a.id - b.id));
-  const activeSum = rows.filter(t => t.is_active).reduce((s, t) => s + Number(t.weight), 0);
-  const ok = activeSum === 100;
-
-  const factorRows = rows.map(t => `
-    <div class="tpl-factor-row ${t.is_active ? '' : 'tpl-inactive'}">
-      <input class="tpl-order" type="number" min="0" value="${t.display_order}"
-        title="ترتيب العرض" onchange="updateTemplateField(${t.id},'display_order',this.value)">
-      <div class="tpl-name">${t.factor_name}</div>
-      <div class="tpl-weight-wrap">
-        <input class="tpl-weight" type="number" min="0" max="100" value="${Number(t.weight)}"
-          onchange="updateTemplateField(${t.id},'weight',this.value)"><span>%</span>
-      </div>
-      <label class="toggle-switch" title="${t.is_active ? 'مُفعّل' : 'مُعطّل'}">
-        <input type="checkbox" ${t.is_active ? 'checked' : ''} onchange="toggleTemplateActive(${t.id})">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>`).join('') || `<div class="tpl-empty">لا توجد معايير لهذه الوظيفة بعد — أضِف أول معيار بالأسفل.</div>`;
-
-  host.innerHTML = `
-    <div class="tpl-tabs">
-      ${tabs}
-      <button class="tpl-role-tab tpl-tab-add" onclick="addNewRolePrompt()">
-        <span class="tpl-tab-icon">➕</span><span>وظيفة جديدة</span>
-      </button>
-    </div>
-    <div class="tpl-role-card">
-      <div class="tpl-role-head">
-        <div class="tpl-role-name">${roleIcon(role)} ${roleLabel(role)}</div>
-        <div class="tpl-sum ${ok ? 'tpl-sum-ok' : 'tpl-sum-warn'}">
-          مجموع الأوزان المفعّلة: ${activeSum}%${ok ? ' ✓' : ' ⚠️ يجب أن يساوي 100%'}
-        </div>
-      </div>
-      <div class="tpl-factor-head"><span>الترتيب</span><span>المعيار</span><span>الوزن</span><span>مُفعّل</span></div>
-      ${factorRows}
-    </div>
-    <div class="tpl-add-card">
-      <div class="tpl-add-title">➕ إضافة معيار إلى وظيفة «${roleLabel(role)}»</div>
-      <div class="tpl-add-grid">
-        <div class="form-group" style="grid-column:1/-1;">
-          <label class="form-label">اسم المعيار</label>
-          <input class="form-input" id="tpl-add-name" placeholder="مثال: الالتزام بالحضور">
-        </div>
-        <div class="form-group">
-          <label class="form-label">الوزن %</label>
-          <input class="form-input" id="tpl-add-weight" type="number" min="0" max="100" placeholder="20">
-        </div>
-        <div class="form-group">
-          <label class="form-label">الترتيب</label>
-          <input class="form-input" id="tpl-add-order" type="number" min="0" placeholder="${rows.length + 1}">
-        </div>
-      </div>
-      <button class="btn-sm btn-primary" style="margin-top:6px;padding:10px 22px;" onclick="addTemplateFactor()">➕ إضافة المعيار</button>
-    </div>`;
-}
-
-function selectTplRole(i) {
-  const roles = window._tplTabRoles || getAllRoles();
-  if (roles[i] != null) { tplActiveRole = roles[i]; renderTemplateManager(); }
-}
-
-function addNewRolePrompt() {
-  const name = prompt('اسم الوظيفة الجديدة (مثال: أمين مخزن):', '');
-  if (name == null) return;
-  const r = normRole(name);
-  if (!r) { showToast('⚠️ اسم الوظيفة غير صالح', 'warning'); return; }
-  tplActiveRole = r;
-  renderTemplateManager();
-  showToast(`أضِف أول معيار لوظيفة «${roleLabel(r)}» بالأسفل`, 'info');
-}
-
-function updateTemplateField(id, field, value) {
-  const t = evalTemplates.find(x => x.id === id);
-  if (!t) return;
-  if (field === 'weight') {
-    let w = parseFloat(value); if (isNaN(w)) w = 0; w = Math.max(0, Math.min(100, w));
-    t.weight = w;
-  } else if (field === 'display_order') {
-    let o = parseInt(value); if (isNaN(o)) o = 0;
-    t.display_order = o;
-  }
-  persistTemplates();
-  renderTemplateManager();
-  if (currentView === 'entry') renderFactorRows();   // keep open form in sync
-}
-
-function toggleTemplateActive(id) {
-  const t = evalTemplates.find(x => x.id === id);
-  if (!t) return;
-  t.is_active = !t.is_active;          // deprecate by flag — never hard-delete
-  persistTemplates();
-  renderTemplateManager();
-  if (currentView === 'entry') renderFactorRows();
-  showToast(t.is_active ? '✅ تم تفعيل المعيار' : '🚫 تم تعطيل المعيار', 'info');
-}
-
-function addTemplateFactor() {
-  const role   = normRole(tplActiveRole);
-  const name   = (document.getElementById('tpl-add-name').value || '').trim();
-  let   weight = parseFloat(document.getElementById('tpl-add-weight').value);
-  let   order  = parseInt(document.getElementById('tpl-add-order').value);
-
-  if (!role)  { showToast('⚠️ اختر وظيفة أولاً', 'warning'); return; }
-  if (!name)  { showToast('⚠️ أدخل اسم المعيار', 'warning'); return; }
-  if (isNaN(weight) || weight < 0 || weight > 100) { showToast('⚠️ الوزن يجب أن يكون بين 0 و 100', 'warning'); return; }
-  if (isNaN(order)) {
-    const existing = evalTemplates.filter(t => normRole(t.job_title) === role);
-    order = existing.reduce((m, t) => Math.max(m, t.display_order), 0) + 1;
-  }
-
-  evalTemplates.push({
-    id: nextTemplateId(),
-    job_title: role,
-    factor_name: name,
-    weight: weight,
-    display_order: order,
-    is_active: true,
-  });
-  persistTemplates();
-  renderTemplateManager();
-  if (currentView === 'entry') renderFactorRows();
-  showToast(`✅ تمت إضافة «${name}» لوظيفة ${roleLabel(role)}`, 'success');
 }
 
 function saveNotifSettings() {
@@ -4630,9 +4235,6 @@ function openAddEmpModal() {
   });
   const dept = document.getElementById('aem-dept');  if (dept) dept.value = 'المبيعات';
   const role = document.getElementById('aem-role');  if (role) role.value = 'employee';
-  const jobEl = document.getElementById('aem-job');  if (jobEl) jobEl.value = '';
-  const jobList = document.getElementById('aem-job-list');
-  if (jobList) jobList.innerHTML = getAllRoles().map(r => `<option value="${r}">`).join('');
   const errEl = document.getElementById('aem-error'); if (errEl) errEl.style.display = 'none';
   document.getElementById('add-emp-modal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -4648,7 +4250,6 @@ function saveNewEmployee() {
   const name     = document.getElementById('aem-name').value.trim();
   const dept     = document.getElementById('aem-dept').value;
   const role     = document.getElementById('aem-role').value;
-  const jobTitle = normRole(document.getElementById('aem-job').value) || ROLE_DEFAULT_KEY;
   const username = document.getElementById('aem-username').value.trim();
   const password = document.getElementById('aem-password').value.trim();
   const errEl    = document.getElementById('aem-error');
@@ -4668,8 +4269,8 @@ function saveNewEmployee() {
   const color     = getNextAvatarColor();
   const initials  = name.charAt(0);
 
-  // Add to EMPLOYEES (job_title drives which evaluation criteria load for them)
-  const newEmp = { id: newEmpId, name, dept, job_title: jobTitle, baseScore: 75, color };
+  // Add to EMPLOYEES
+  const newEmp = { id: newEmpId, name, dept, baseScore: 75, color };
   EMPLOYEES.push(newEmp);
 
   // Generate EMP_DATA
