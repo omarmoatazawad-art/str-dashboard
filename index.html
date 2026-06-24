@@ -1290,6 +1290,14 @@ body.employee-role { padding-bottom: 0 !important; }
 .snap-table tfoot td{font-weight:800;color:var(--text1);background:var(--surface2);}
 
 /* ── TEMPLATE MANAGER (Settings → per-role criteria) ── */
+.tpl-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.tpl-role-tab{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;}
+.tpl-role-tab:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);}
+.tpl-role-tab.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(37,99,235,.3);}
+.tpl-tab-icon{font-size:18px;line-height:1;}
+.tpl-tab-add{border-style:dashed;color:var(--success-dark);}
+.tpl-tab-add:hover{border-color:var(--success);color:var(--success);}
+.dark .tpl-tab-add{color:#4ade80;}
 .tpl-role-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;}
 .tpl-role-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
 .tpl-role-name{font-size:15px;font-weight:800;color:var(--text1);}
@@ -4221,7 +4229,8 @@ function renderSettings() {
 
   if (notifSec)  notifSec.style.display  = isCeo ? '' : 'none';
   if (usersSec)  usersSec.style.display  = isCeo ? '' : 'none';
-  if (weightSec) weightSec.style.display = (isCeo || isManager) ? '' : 'none';
+  // Legacy sales-only KPI weights panel hidden — the per-role Template Manager replaces it
+  if (weightSec) weightSec.style.display = 'none';
   if (tplSec)    tplSec.style.display    = (isCeo || isManager) ? '' : 'none';
 
   // Update section title for managers
@@ -4255,61 +4264,74 @@ function renderSettings() {
 //  picks them up automatically. Factors are deprecated via is_active, never
 //  hard-deleted.
 // ═══════════════════════════════════════════════════════════════════════
+// Active role tab in the Template Manager
+let tplActiveRole = null;
+
+// UI-only icon per role (presentation; factor DATA still lives in the data layer)
+const ROLE_ICONS = { 'بائع':'🛍️', 'كاشير':'💳', 'عامل نظافة':'🧹', 'default':'👥' };
+function roleIcon(role){ return ROLE_ICONS[normRole(role)] || '🏷️'; }
+
 function renderTemplateManager() {
   const host = document.getElementById('template-manager-container');
   if (!host) return;
+
   const roles = getAllRoles();
+  let tabRoles = roles.slice();
+  // keep a just-created role (no factors yet) visible as the active tab
+  if (tplActiveRole && !tabRoles.includes(tplActiveRole)) tabRoles.push(tplActiveRole);
+  if (!tplActiveRole || !tabRoles.includes(tplActiveRole)) tplActiveRole = tabRoles[0];
+  window._tplTabRoles = tabRoles;
 
-  const roleCards = roles.map(role => {
-    const rows = evalTemplates
-      .filter(t => normRole(t.job_title) === role)
-      .sort((a, b) => (a.display_order - b.display_order) || (a.id - b.id));
-    const activeSum = rows.filter(t => t.is_active).reduce((s, t) => s + Number(t.weight), 0);
-    const ok = activeSum === 100;
+  // ── Role tab bar (icons) ──
+  const tabs = tabRoles.map((r, i) => `
+    <button class="tpl-role-tab ${r === tplActiveRole ? 'active' : ''}" onclick="selectTplRole(${i})">
+      <span class="tpl-tab-icon">${roleIcon(r)}</span><span>${roleLabel(r)}</span>
+    </button>`).join('');
 
-    const factorRows = rows.map(t => `
-      <div class="tpl-factor-row ${t.is_active ? '' : 'tpl-inactive'}">
-        <input class="tpl-order" type="number" min="0" value="${t.display_order}"
-          title="ترتيب العرض" onchange="updateTemplateField(${t.id},'display_order',this.value)">
-        <div class="tpl-name">${t.factor_name}</div>
-        <div class="tpl-weight-wrap">
-          <input class="tpl-weight" type="number" min="0" max="100" value="${Number(t.weight)}"
-            onchange="updateTemplateField(${t.id},'weight',this.value)"><span>%</span>
-        </div>
-        <label class="toggle-switch" title="${t.is_active ? 'مُفعّل' : 'مُعطّل'}">
-          <input type="checkbox" ${t.is_active ? 'checked' : ''} onchange="toggleTemplateActive(${t.id})">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>`).join('') || `<div class="tpl-empty">لا توجد معايير لهذه الوظيفة بعد.</div>`;
+  // ── Selected role's factors ──
+  const role = tplActiveRole;
+  const rows = evalTemplates
+    .filter(t => normRole(t.job_title) === role)
+    .sort((a, b) => (a.display_order - b.display_order) || (a.id - b.id));
+  const activeSum = rows.filter(t => t.is_active).reduce((s, t) => s + Number(t.weight), 0);
+  const ok = activeSum === 100;
 
-    return `
-      <div class="tpl-role-card">
-        <div class="tpl-role-head">
-          <div class="tpl-role-name">💼 ${roleLabel(role)}</div>
-          <div class="tpl-sum ${ok ? 'tpl-sum-ok' : 'tpl-sum-warn'}">
-            مجموع الأوزان المفعّلة: ${activeSum}%${ok ? ' ✓' : ' ⚠️ يجب أن يساوي 100%'}
-          </div>
-        </div>
-        <div class="tpl-factor-head">
-          <span>الترتيب</span><span>المعيار</span><span>الوزن</span><span>مُفعّل</span>
-        </div>
-        ${factorRows}
-      </div>`;
-  }).join('');
-
-  const roleOptions = roles.map(r => `<option value="${r}">${roleLabel(r)}</option>`).join('');
+  const factorRows = rows.map(t => `
+    <div class="tpl-factor-row ${t.is_active ? '' : 'tpl-inactive'}">
+      <input class="tpl-order" type="number" min="0" value="${t.display_order}"
+        title="ترتيب العرض" onchange="updateTemplateField(${t.id},'display_order',this.value)">
+      <div class="tpl-name">${t.factor_name}</div>
+      <div class="tpl-weight-wrap">
+        <input class="tpl-weight" type="number" min="0" max="100" value="${Number(t.weight)}"
+          onchange="updateTemplateField(${t.id},'weight',this.value)"><span>%</span>
+      </div>
+      <label class="toggle-switch" title="${t.is_active ? 'مُفعّل' : 'مُعطّل'}">
+        <input type="checkbox" ${t.is_active ? 'checked' : ''} onchange="toggleTemplateActive(${t.id})">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`).join('') || `<div class="tpl-empty">لا توجد معايير لهذه الوظيفة بعد — أضِف أول معيار بالأسفل.</div>`;
 
   host.innerHTML = `
-    ${roleCards}
-    <div class="tpl-add-card">
-      <div class="tpl-add-title">➕ إضافة معيار جديد</div>
-      <div class="tpl-add-grid">
-        <div class="form-group">
-          <label class="form-label">الوظيفة (موجودة أو جديدة)</label>
-          <input class="form-input" id="tpl-add-role" list="tpl-role-list" placeholder="مثال: بائع أو أمين مخزن">
-          <datalist id="tpl-role-list">${roleOptions}</datalist>
+    <div class="tpl-tabs">
+      ${tabs}
+      <button class="tpl-role-tab tpl-tab-add" onclick="addNewRolePrompt()">
+        <span class="tpl-tab-icon">➕</span><span>وظيفة جديدة</span>
+      </button>
+    </div>
+    <div class="tpl-role-card">
+      <div class="tpl-role-head">
+        <div class="tpl-role-name">${roleIcon(role)} ${roleLabel(role)}</div>
+        <div class="tpl-sum ${ok ? 'tpl-sum-ok' : 'tpl-sum-warn'}">
+          مجموع الأوزان المفعّلة: ${activeSum}%${ok ? ' ✓' : ' ⚠️ يجب أن يساوي 100%'}
         </div>
-        <div class="form-group">
+      </div>
+      <div class="tpl-factor-head"><span>الترتيب</span><span>المعيار</span><span>الوزن</span><span>مُفعّل</span></div>
+      ${factorRows}
+    </div>
+    <div class="tpl-add-card">
+      <div class="tpl-add-title">➕ إضافة معيار إلى وظيفة «${roleLabel(role)}»</div>
+      <div class="tpl-add-grid">
+        <div class="form-group" style="grid-column:1/-1;">
           <label class="form-label">اسم المعيار</label>
           <input class="form-input" id="tpl-add-name" placeholder="مثال: الالتزام بالحضور">
         </div>
@@ -4319,11 +4341,26 @@ function renderTemplateManager() {
         </div>
         <div class="form-group">
           <label class="form-label">الترتيب</label>
-          <input class="form-input" id="tpl-add-order" type="number" min="0" placeholder="1">
+          <input class="form-input" id="tpl-add-order" type="number" min="0" placeholder="${rows.length + 1}">
         </div>
       </div>
       <button class="btn-sm btn-primary" style="margin-top:6px;padding:10px 22px;" onclick="addTemplateFactor()">➕ إضافة المعيار</button>
     </div>`;
+}
+
+function selectTplRole(i) {
+  const roles = window._tplTabRoles || getAllRoles();
+  if (roles[i] != null) { tplActiveRole = roles[i]; renderTemplateManager(); }
+}
+
+function addNewRolePrompt() {
+  const name = prompt('اسم الوظيفة الجديدة (مثال: أمين مخزن):', '');
+  if (name == null) return;
+  const r = normRole(name);
+  if (!r) { showToast('⚠️ اسم الوظيفة غير صالح', 'warning'); return; }
+  tplActiveRole = r;
+  renderTemplateManager();
+  showToast(`أضِف أول معيار لوظيفة «${roleLabel(r)}» بالأسفل`, 'info');
 }
 
 function updateTemplateField(id, field, value) {
@@ -4352,12 +4389,12 @@ function toggleTemplateActive(id) {
 }
 
 function addTemplateFactor() {
-  const role   = normRole(document.getElementById('tpl-add-role').value);
+  const role   = normRole(tplActiveRole);
   const name   = (document.getElementById('tpl-add-name').value || '').trim();
   let   weight = parseFloat(document.getElementById('tpl-add-weight').value);
   let   order  = parseInt(document.getElementById('tpl-add-order').value);
 
-  if (!role)  { showToast('⚠️ أدخل اسم الوظيفة', 'warning'); return; }
+  if (!role)  { showToast('⚠️ اختر وظيفة أولاً', 'warning'); return; }
   if (!name)  { showToast('⚠️ أدخل اسم المعيار', 'warning'); return; }
   if (isNaN(weight) || weight < 0 || weight > 100) { showToast('⚠️ الوزن يجب أن يكون بين 0 و 100', 'warning'); return; }
   if (isNaN(order)) {
