@@ -4478,7 +4478,9 @@ function jobLabel(key) { const j = JOB_TYPES.find(x => x.key === key); return j 
 function renderWeightEditor() {
   const container = document.getElementById('weight-editor-container');
   if (!container) return;
+  try {
   if (!evaluationSettings) loadEvalSettings();
+  if (!evaluationSettings || !evaluationSettings[currentJobType]) { loadEvalSettings(); currentJobType = 'sales'; }
   const crit = evaluationSettings[currentJobType].criteria;
 
   const typeOptions = JOB_TYPES.map(j =>
@@ -4532,6 +4534,12 @@ function renderWeightEditor() {
     </div>`;
 
   onJobWeightInput(); // initialise total + validation state
+  } catch (err) {
+    console.error('renderWeightEditor failed:', err);
+    container.innerHTML = '<div style="padding:18px;color:var(--danger);font-weight:700;line-height:1.7;">'
+      + 'تعذّر تحميل محرر الأوزان. حاول تحديث الصفحة (Ctrl+Shift+R).<br><span style="font-size:11px;color:var(--text3);">'
+      + ((err && err.message) ? err.message : '') + '</span></div>';
+  }
 }
 
 // Switch job type → load that type's saved values
