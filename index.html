@@ -4429,54 +4429,183 @@ function refreshAllDashboards() {
 }
 
 /* ── Render weight editor inside the settings panel ── */
+// ═══════════════════════════════════════════════════════════════════════
+//  EVALUATION CRITERIA WEIGHTS — per job type (مبيعات / عامل نظافة / كاشير)
+//  Each job type has its own independent criteria + weights, saved separately
+//  in localStorage. Switching the dropdown loads that type's saved values.
+// ═══════════════════════════════════════════════════════════════════════
+const LS_JOB_WEIGHTS = 'str_job_weights_v1';
+const JOB_TYPES = [
+  { key:'sales',   label:'مبيعات' },
+  { key:'cleaner', label:'عامل نظافة' },
+  { key:'cashier', label:'كاشير' },
+];
+const DEFAULT_EVAL_SETTINGS = {
+  sales:   { criteria: [
+    { name:'حسن التعامل مع العميل',   weight:30 },
+    { name:'تحقيق المبيعات',          weight:25 },
+    { name:'الالتزام بالحضور',        weight:20 },
+    { name:'الالتزام بالتعليمات',     weight:15 },
+    { name:'الالتزام بالمهام اليومية', weight:10 },
+  ]},
+  cleaner: { criteria: [
+    { name:'نظافة المكان',        weight:40 },
+    { name:'الالتزام بالحضور',    weight:25 },
+    { name:'سرعة الإنجاز',        weight:20 },
+    { name:'الالتزام بالتعليمات', weight:15 },
+  ]},
+  cashier: { criteria: [
+    { name:'دقة الحسابات',           weight:35 },
+    { name:'سرعة الخدمة',            weight:25 },
+    { name:'حسن التعامل مع العملاء', weight:25 },
+    { name:'الالتزام بالحضور',       weight:15 },
+  ]},
+};
+let evaluationSettings = null;
+let currentJobType = 'sales';
+
+function loadEvalSettings() {
+  try { evaluationSettings = JSON.parse(localStorage.getItem(LS_JOB_WEIGHTS)); } catch(e) { evaluationSettings = null; }
+  // Validate shape; (re)seed defaults if missing/corrupt
+  if (!evaluationSettings || !evaluationSettings.sales || !evaluationSettings.cleaner || !evaluationSettings.cashier) {
+    evaluationSettings = JSON.parse(JSON.stringify(DEFAULT_EVAL_SETTINGS)); // deep clone
+    persistEvalSettings();
+  }
+}
+function persistEvalSettings() { try { localStorage.setItem(LS_JOB_WEIGHTS, JSON.stringify(evaluationSettings)); } catch(e) {} }
+function jobLabel(key) { const j = JOB_TYPES.find(x => x.key === key); return j ? j.label : key; }
+
 function renderWeightEditor() {
   const container = document.getElementById('weight-editor-container');
   if (!container) return;
+  if (!evaluationSettings) loadEvalSettings();
+  const crit = evaluationSettings[currentJobType].criteria;
 
-  const rows = KPIs.map((k, i) => {
-    const pct = Math.round(k.weight * 100);
+  const typeOptions = JOB_TYPES.map(j =>
+    `<option value="${j.key}" ${j.key === currentJobType ? 'selected' : ''}>${j.label}</option>`).join('');
+
+  const rows = crit.map((c, i) => {
+    const pct = Number(c.weight) || 0;
     return `
-      <div class="weight-row" id="wrow-${k.id}">
-        <span class="weight-icon">${k.icon}</span>
-        <div class="weight-label">${k.label}</div>
+      <div class="weight-row" id="jwrow-${i}">
+        <span class="weight-icon">📌</span>
+        <div class="weight-label">${c.name}</div>
         <div class="weight-input-wrap">
-          <input type="number" class="weight-input" id="wi-${k.id}"
+          <input type="number" class="weight-input" id="jwi-${i}"
             value="${pct}" min="0" max="100" step="1"
-            oninput="onWeightInput()"
-            onfocus="this.select()"
-            aria-label="${k.label} weight percentage">
+            oninput="onJobWeightInput()" onfocus="this.select()"
+            aria-label="${c.name}">
           <span class="weight-pct">%</span>
         </div>
         <div class="weight-bar-bg">
-          <div class="weight-bar-fill" id="wfill-${k.id}"
-            style="width:${pct}%;background:${k.color};"></div>
+          <div class="weight-bar-fill" id="jwfill-${i}" style="width:${pct}%;background:var(--primary);"></div>
         </div>
       </div>`;
   }).join('');
 
   container.innerHTML = `
+    <div class="form-group" style="margin-bottom:18px;max-width:340px;">
+      <label class="form-label" style="font-size:13px;font-weight:800;color:var(--text2);margin-bottom:6px;display:block;">نوع الوظيفة</label>
+      <select class="form-select" id="job-type-select" onchange="onJobTypeChange(this.value)" style="font-weight:700;">
+        ${typeOptions}
+      </select>
+    </div>
     <div class="weight-editor">
       <div class="weight-hint">
-        ⬆ ⬇ أو Tab للانتقال بين الحقول · أدخل نسبة مئوية صحيحة لكل معيار · المجموع يجب أن يساوي 100%
+        معايير وظيفة «${jobLabel(currentJobType)}» · أدخل نسبة لكل معيار · المجموع يجب أن يساوي 100%
       </div>
       ${rows}
-      <div class="weight-total-row" id="w-total-row">
+      <div class="weight-total-row" id="jw-total-row">
         <span class="weight-total-label">المجموع الكلي</span>
-        <span class="weight-total-val" id="w-total-val">100%</span>
+        <span class="weight-total-val" id="jw-total-val">100%</span>
       </div>
-      <div class="weight-msg err" id="w-err-msg"></div>
-      <div class="weight-msg ok"  id="w-ok-msg"></div>
+      <div class="weight-msg err" id="jw-err-msg"></div>
+      <div class="weight-msg ok"  id="jw-ok-msg"></div>
       <div class="weight-actions">
-        <button class="btn-sm btn-ghost" onclick="resetWeightsToDefault()" title="استعادة الأوزان الافتراضية">
+        <button class="btn-sm btn-ghost" onclick="resetJobWeights()" title="استعادة الأوزان الافتراضية">
           ↺ استعادة الافتراضي
         </button>
-        <button class="btn-sm btn-primary" id="btn-save-weights" onclick="confirmSaveWeights()">
-          💾 حفظ الأوزان
+        <button class="btn-sm btn-primary" id="btn-save-job-weights" onclick="saveJobWeights()">
+          💾 حفظ
         </button>
       </div>
     </div>`;
 
-  onWeightInput(); // initialise total display
+  onJobWeightInput(); // initialise total + validation state
+}
+
+// Switch job type → load that type's saved values
+function onJobTypeChange(key) {
+  if (!evaluationSettings[key]) return;
+  currentJobType = key;
+  renderWeightEditor();
+}
+
+// Live total + 100% validation (disables Save unless exactly 100%)
+function onJobWeightInput() {
+  const crit = evaluationSettings[currentJobType].criteria;
+  let total = 0;
+  crit.forEach((c, i) => {
+    const inp = document.getElementById('jwi-' + i);
+    if (!inp) return;
+    const v = Math.max(0, Math.min(100, parseInt(inp.value) || 0));
+    total += v;
+    const fill = document.getElementById('jwfill-' + i);
+    if (fill) fill.style.width = v + '%';
+    inp.classList.toggle('w-invalid', v === 0 && inp.value !== '');
+  });
+  const isOk    = total === 100;
+  const totalVal = document.getElementById('jw-total-val');
+  const totalRow = document.getElementById('jw-total-row');
+  const errMsg   = document.getElementById('jw-err-msg');
+  const saveBtn  = document.getElementById('btn-save-job-weights');
+
+  if (totalVal) { totalVal.textContent = total + '%'; totalVal.style.color = isOk ? 'var(--success-dark)' : 'var(--danger)'; }
+  if (totalRow) { totalRow.classList.toggle('w-total-ok', isOk); totalRow.classList.toggle('w-total-err', !isOk); }
+  if (saveBtn)  saveBtn.disabled = !isOk;
+  if (errMsg) {
+    if (!isOk) {
+      const d = 100 - total;
+      errMsg.textContent = d > 0
+        ? `المجموع ${total}% — يلزم إضافة ${d}% للوصول إلى 100%`
+        : `المجموع ${total}% — يلزم تخفيض ${Math.abs(d)}% للوصول إلى 100%`;
+      errMsg.style.display = '';
+    } else { errMsg.style.display = 'none'; }
+  }
+  const okMsg = document.getElementById('jw-ok-msg');
+  if (okMsg) okMsg.style.display = 'none';
+}
+
+// Save → persists weights for the CURRENT job type only (blocks if ≠ 100%)
+function saveJobWeights() {
+  const crit = evaluationSettings[currentJobType].criteria;
+  let total = 0;
+  const newWeights = crit.map((c, i) => {
+    const v = Math.max(0, Math.min(100, parseInt(document.getElementById('jwi-' + i)?.value) || 0));
+    total += v;
+    return v;
+  });
+  if (total !== 100) { showToast(`⚠️ المجموع ${total}% — يجب أن يساوي 100% قبل الحفظ`, 'warning'); return; }
+
+  crit.forEach((c, i) => { c.weight = newWeights[i]; });
+  persistEvalSettings();
+
+  const okMsg = document.getElementById('jw-ok-msg');
+  if (okMsg) {
+    okMsg.textContent = `✅ تم حفظ أوزان وظيفة «${jobLabel(currentJobType)}» بنجاح`;
+    okMsg.style.display = '';
+    setTimeout(() => { if (okMsg) okMsg.style.display = 'none'; }, 4000);
+  }
+  showToast(`✅ تم حفظ الأوزان لوظيفة «${jobLabel(currentJobType)}»`, 'success');
+}
+
+// Restore the selected job type's default weights (does not touch other types)
+function resetJobWeights() {
+  if (!confirm(`استعادة الأوزان الافتراضية لوظيفة «${jobLabel(currentJobType)}»؟`)) return;
+  evaluationSettings[currentJobType].criteria = JSON.parse(JSON.stringify(DEFAULT_EVAL_SETTINGS[currentJobType].criteria));
+  persistEvalSettings();
+  renderWeightEditor();
+  showToast('ℹ️ تم استعادة الأوزان الافتراضية', 'info');
 }
 
 /* Live update: recalculate total and validate on every keystroke */
