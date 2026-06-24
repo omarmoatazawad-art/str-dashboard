@@ -3411,9 +3411,10 @@ function clampScore(v) { if (isNaN(v)) return 0; if (v < 0) return 0; if (v > 10
 function renderFactorRows() {
   const container = document.getElementById('kpi-input-rows');
   if (!container) return;
-  const name = getEntryEmpName();
+  const sel = document.getElementById('f-emp');
+  const chosen = sel ? sel.value : '';
 
-  if (!name) {
+  if (!chosen) {
     currentFactors = [];
     container.innerHTML = `<div class="factor-empty">👆 اختر اسم الموظف أولاً لعرض معايير التقييم الخاصة بوظيفته</div>`;
     updateRoleInfo('', 0, 0);
