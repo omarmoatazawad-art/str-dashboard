@@ -1570,7 +1570,10 @@ body.employee-role { padding-bottom: 0 !important; }
 
           <!-- KPI Inputs -->
           <div class="kpi-form-section">
-            <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:6px;">معايير التقييم المرجّحة</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+              <div style="font-size:13px;font-weight:700;color:var(--text2);">معايير التقييم المرجّحة</div>
+              <div id="entry-job-indicator"></div>
+            </div>
             <div class="kpi-form-hint">⬆ ⬇ أو Tab للانتقال بين الحقول · أدخل قيمة من 0 إلى 10 لكل معيار</div>
             <div id="kpi-input-rows"></div>
           </div>
@@ -1806,6 +1809,7 @@ body.employee-role { padding-bottom: 0 !important; }
               <th>كلمة المرور</th>
               <th>الوظيفة (الدور)</th>
               <th>المهنة</th>
+              <th>نوع التقييم</th>
               <th>الموظف المرتبط</th>
               <th>تغيير الدور</th>
               <th>إجراءات</th>
@@ -3189,22 +3193,30 @@ function persistEntries() {
   localStorage.setItem(ENTRY_STORAGE_KEY, JSON.stringify(savedEntries));
 }
 
-function initEntryView() {
-  // Set today's date
-  const now = new Date();
-  const opts = {weekday:'long', year:'numeric', month:'long', day:'numeric'};
-  document.getElementById('entry-date-display').textContent = now.toLocaleDateString('ar-EG', opts);
+// ── DYNAMIC PER-ROLE EVALUATION CRITERIA (Sales / Cashier / Cleaner) ──
+// The criteria shown in the entry form depend on the selected employee's
+// assigned job type. entryCriteria holds the criteria currently displayed.
+let entryCriteria = [];
+let entryJobType  = null;
 
-  // Build KPI input rows
+// Render the KPI input rows from the current entryCriteria array
+function renderEntryCriteria() {
   const container = document.getElementById('kpi-input-rows');
-  container.innerHTML = KPIs.map((k, i) => `
+  if (!container) return;
+  if (!entryCriteria.length) {
+    container.innerHTML = `<div style="padding:18px;text-align:center;color:var(--text3);font-size:13px;font-weight:600;border:1px dashed var(--border);border-radius:10px;background:var(--surface2);">👆 اختر اسم الموظف أولاً لعرض معايير التقييم الخاصة بوظيفته</div>`;
+    return;
+  }
+  container.innerHTML = entryCriteria.map((c, i) => {
+    const color = CRIT_COLORS[i % CRIT_COLORS.length];
+    return `
     <div class="kpi-input-row" id="kpi-row-${i}">
       <div class="kpi-row-idx">${i + 1}</div>
-      <span class="kpi-row-icon">${k.icon}</span>
-      <div class="kpi-row-label">${k.label}</div>
-      <span class="kpi-row-weight">${(k.weight * 100).toFixed(0)}%</span>
+      <span class="kpi-row-icon">📌</span>
+      <div class="kpi-row-label">${c.name}</div>
+      <span class="kpi-row-weight">${c.weight}%</span>
       <div class="kpi-mini-bar">
-        <div class="kpi-mini-fill" id="kpi-mini-${i}" style="width:0%;background:${k.color};"></div>
+        <div class="kpi-mini-fill" id="kpi-mini-${i}" style="width:0%;background:${color};"></div>
       </div>
       <input
         type="number" min="0" max="10" step="0.5"
@@ -3217,8 +3229,70 @@ function initEntryView() {
         onfocus="document.getElementById('kpi-row-${i}').classList.add('focused')"
         onblur="document.getElementById('kpi-row-${i}').classList.remove('focused')"
       >
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+}
+
+// Load the criteria for the currently-selected employee's job type
+function applyEmpJobCriteria() {
+  if (!evaluationSettings) loadEvalSettings();
+  const sel = document.getElementById('f-emp');
+  const val = sel ? sel.value : '';
+  let jt;
+  if (val && val !== '__custom__') {
+    jt = getEmpJobTypeByName(val);   // known employee → auto-detect job type
+  } else {
+    jt = entryJobType || 'sales';    // custom/none → keep manual pick or default
+  }
+  entryJobType = jt;
+  entryCriteria = (evaluationSettings[jt] && evaluationSettings[jt].criteria || [])
+    .map(c => ({ name: c.name, weight: Number(c.weight) || 0 }));
+  renderEntryCriteria();
+  updateEntryJobBadge(jt);
+  recalcTotal();
+}
+
+// Show the active job type; for custom names, allow manually picking it
+function updateEntryJobBadge(jt) {
+  const el = document.getElementById('entry-job-indicator');
+  if (!el) return;
+  const sel = document.getElementById('f-emp');
+  const isCustom = sel && sel.value === '__custom__';
+  const isNone   = !sel || !sel.value;
+  if (isNone) { el.innerHTML = ''; return; }
+  if (isCustom) {
+    const opts = JOB_TYPES.map(j =>
+      `<option value="${j.key}" ${j.key === jt ? 'selected' : ''}>${j.label}</option>`).join('');
+    el.innerHTML = `<label style="font-size:11px;font-weight:700;color:var(--text3);margin-left:6px;">نوع الوظيفة:</label>
+      <select class="filter-select" style="font-size:12px;padding:4px 8px;font-weight:700;"
+        onchange="onEntryJobTypePick(this.value)" aria-label="نوع الوظيفة">${opts}</select>`;
+  } else {
+    el.innerHTML = `<span style="font-size:12px;font-weight:800;color:var(--primary);background:var(--primary-light);padding:4px 12px;border-radius:20px;">🏷️ معايير وظيفة: ${jobLabel(jt)}</span>`;
+  }
+}
+
+// Manual job-type pick (for custom employee names not in the list)
+function onEntryJobTypePick(jt) {
+  entryJobType = jt;
+  entryCriteria = (evaluationSettings[jt] && evaluationSettings[jt].criteria || [])
+    .map(c => ({ name: c.name, weight: Number(c.weight) || 0 }));
+  renderEntryCriteria();
+  updateEntryJobBadge(jt);
+  recalcTotal();
+  scheduleDraftSave();
+}
+
+function initEntryView() {
+  // Set today's date
+  const now = new Date();
+  const opts = {weekday:'long', year:'numeric', month:'long', day:'numeric'};
+  document.getElementById('entry-date-display').textContent = now.toLocaleDateString('ar-EG', opts);
+
+  // Build KPI input rows — dynamic, based on the selected employee's job type.
+  // Start in the "select an employee" empty state; criteria load on selection.
+  entryCriteria = [];
+  entryJobType  = null;
+  renderEntryCriteria();
 
   syncEmpDropdown();
   renderEntriesList();
@@ -3241,6 +3315,15 @@ function onEmpSelectChange(sel) {
   const wrap = document.getElementById('f-emp-custom');
   wrap.style.display = sel.value === '__custom__' ? '' : 'none';
   if (sel.value !== '__custom__') wrap.value = '';
+  // Auto-sync the القسم field + load this employee's role-specific criteria
+  if (sel.value && sel.value !== '__custom__') {
+    const emp = EMPLOYEES.find(e => e.name === sel.value);
+    const deptSel = document.getElementById('f-dept');
+    if (emp && emp.dept && deptSel) {
+      if (Array.from(deptSel.options).some(o => o.value === emp.dept)) deptSel.value = emp.dept;
+    }
+  }
+  applyEmpJobCriteria();
 }
 
 function onRaterSelectChange(sel) {
@@ -3277,7 +3360,7 @@ function onKpiInput(idx) {
 }
 
 function kpiKeyNav(e, idx) {
-  const last = KPIs.length - 1;
+  const last = entryCriteria.length - 1;
   if (e.key === 'ArrowDown' || e.key === 'Enter') {
     e.preventDefault();
     const next = Math.min(idx + 1, last);
@@ -3292,16 +3375,16 @@ function kpiKeyNav(e, idx) {
 
 function recalcTotal() {
   let total = 0;
-  let allFilled = true;
+  let allFilled = entryCriteria.length > 0;
   let rawWeighted = 0;
-  KPIs.forEach((k, i) => {
+  entryCriteria.forEach((c, i) => {
     const inp = document.getElementById('kpi-input-' + i);
-    const v = parseFloat(inp.value) || 0;
-    if (inp.value === '') allFilled = false;
-    // score out of 10 → convert to % by ×10, then apply weight
-    rawWeighted += v * k.weight;
+    const v = parseFloat(inp && inp.value) || 0;
+    if (!inp || inp.value === '') allFilled = false;
+    // score out of 10, weight is a percentage (0–100) → contribution = v × weight/100
+    rawWeighted += v * (c.weight / 100);
   });
-  // rawWeighted is 0–10 (since weights sum to 1 and each score is 0–10)
+  // rawWeighted is 0–10 (weights sum to 100% and each score is 0–10)
   // multiply by 10 to get final percentage 0–100
   total = Math.round(rawWeighted * 10 * 10) / 10;
 
@@ -3323,18 +3406,23 @@ function recalcTotal() {
 function saveEntry() {
   const empName = getEntryEmpName();
   if (!empName) { showToast('⚠️ يرجى اختيار اسم الموظف', 'warning'); document.getElementById('f-emp').focus(); return; }
+  if (!entryCriteria.length) { showToast('⚠️ اختر الموظف أولاً لعرض معايير التقييم', 'warning'); document.getElementById('f-emp').focus(); return; }
 
-  const scores = {};
+  // Snapshot the role-specific criteria + scores with each entry so the saved
+  // record renders correctly regardless of later weight/role changes.
+  const critSnapshot = [];
   let valid = true;
-  KPIs.forEach((k, i) => {
+  let rawWeighted = 0;
+  entryCriteria.forEach((c, i) => {
     const v = parseFloat(document.getElementById('kpi-input-' + i).value);
     if (isNaN(v) || v < 0 || v > 10) { valid = false; document.getElementById('kpi-input-' + i).classList.add('invalid'); }
-    scores[k.id] = isNaN(v) ? 0 : v;
+    const sv = isNaN(v) ? 0 : v;
+    rawWeighted += sv * (c.weight / 100);
+    critSnapshot.push({ name: c.name, weight: c.weight, score: sv });
   });
   if (!valid) { showToast('⚠️ تحقق من القيم - يجب أن تكون بين 0 و 10', 'warning'); return; }
 
   // weighted sum out of 10, convert to %
-  const rawWeighted = KPIs.reduce((s, k) => s + scores[k.id] * k.weight, 0);
   const final = Math.round(rawWeighted * 10 * 10) / 10;
   const now = new Date();
 
@@ -3343,9 +3431,11 @@ function saveEntry() {
     empName,
     rater: getEntryRaterName() || '—',
     dept: document.getElementById('f-dept').value,
+    jobType: entryJobType,
+    jobTypeLabel: jobLabel(entryJobType),
+    criteria: critSnapshot,
     period: document.getElementById('f-period').value,
     notes: document.getElementById('f-notes').value.trim(),
-    scores,
     final,
     dateISO: now.toISOString(),
     dateLabel: now.toLocaleDateString('ar-EG', {weekday:'long', year:'numeric', month:'long', day:'numeric'}),
@@ -3373,11 +3463,11 @@ function resetEntryForm() {
   document.getElementById('f-notes').value = '';
   document.getElementById('f-period').value = 'صباحي';
   document.getElementById('f-dept').value = 'المبيعات';
-  KPIs.forEach((_, i) => {
-    document.getElementById('kpi-input-' + i).value = '';
-    document.getElementById('kpi-input-' + i).classList.remove('invalid');
-    document.getElementById('kpi-mini-' + i).style.width = '0%';
-  });
+  // Reset dynamic criteria back to the empty "select an employee" state
+  entryCriteria = [];
+  entryJobType  = null;
+  renderEntryCriteria();
+  updateEntryJobBadge(null);
   document.getElementById('form-total-val').textContent = '0%';
   document.getElementById('form-grade-badge').textContent = '—';
   document.getElementById('form-pct-strip').textContent = '';
@@ -3430,16 +3520,38 @@ function renderEntriesList() {
   container.innerHTML = filtered.map(entry => {
     const status = getStatus(entry.final);
     const scoreColor = getScoreColor(entry.final);
-    // topKpi: highest weighted contribution (score × weight)
-    const topKpi = KPIs.reduce((best, k) =>
-      (entry.scores[k.id] * k.weight) > (entry.scores[best.id] * best.weight) ? k : best, KPIs[0]);
+
+    let chipsHtml, topLine, jobTag = '';
+    if (Array.isArray(entry.criteria) && entry.criteria.length) {
+      // New role-based entries: render from the saved criteria snapshot
+      const top = entry.criteria.reduce((b, c) =>
+        (c.score * c.weight) > (b.score * b.weight) ? c : b, entry.criteria[0]);
+      chipsHtml = entry.criteria.map((c, i) => {
+        const color = CRIT_COLORS[i % CRIT_COLORS.length];
+        return `<div class="entry-kpi-chip" style="border-color:${color}40;color:${c.score >= 8 ? color : 'var(--text3)'};">📌 ${c.name}: ${c.score}/10</div>`;
+      }).join('');
+      topLine = `⭐ أفضل معيار: ${top.name} (${top.score}/10)`;
+      if (entry.jobTypeLabel) jobTag = ` · 🏷️ ${entry.jobTypeLabel}`;
+    } else if (entry.scores) {
+      // Legacy entries saved before role-based criteria: fall back to global KPIs
+      const topKpi = KPIs.reduce((best, k) =>
+        (entry.scores[k.id] * k.weight) > (entry.scores[best.id] * best.weight) ? k : best, KPIs[0]);
+      chipsHtml = KPIs.map(k => `
+        <div class="entry-kpi-chip" style="border-color:${k.color}40;color:${entry.scores[k.id] >= 8 ? k.color : 'var(--text3)'};">
+          ${k.icon} ${entry.scores[k.id]}/10
+        </div>`).join('');
+      topLine = `⭐ أفضل معيار: ${topKpi.label} (${entry.scores[topKpi.id]}/10)`;
+    } else {
+      chipsHtml = ''; topLine = '';
+    }
+
     return `
       <div class="entry-item-card">
         <button class="entry-item-del" onclick="event.stopPropagation();deleteEntry(${entry.id})" title="حذف">✕</button>
         <div class="entry-item-top">
           <div>
             <div class="entry-item-name">${entry.empName}</div>
-            <div class="entry-item-meta">📅 ${entry.dateLabel} · ${entry.timeLabel} · ${entry.period} · ${entry.dept}${getProfessionByName(entry.empName) ? ' · 💼 ' + getProfessionByName(entry.empName) : ''}</div>
+            <div class="entry-item-meta">📅 ${entry.dateLabel} · ${entry.timeLabel} · ${entry.period} · ${entry.dept}${jobTag}${getProfessionByName(entry.empName) ? ' · 💼 ' + getProfessionByName(entry.empName) : ''}</div>
             ${entry.rater && entry.rater !== '—' ? `<div class="entry-item-meta">👤 المشرف: ${entry.rater}</div>` : ''}
             ${entry.notes ? `<div class="entry-item-meta" style="color:var(--text2);font-style:italic;">💬 ${entry.notes}</div>` : ''}
           </div>
@@ -3448,14 +3560,8 @@ function renderEntriesList() {
             <span class="status-badge ${status.cls}" style="font-size:10px;">${status.label}</span>
           </div>
         </div>
-        <div class="entry-item-kpis">
-          ${KPIs.map(k => `
-            <div class="entry-kpi-chip" style="border-color:${k.color}40;color:${entry.scores[k.id] >= 8 ? k.color : 'var(--text3)'};">
-              ${k.icon} ${entry.scores[k.id]}/10
-            </div>
-          `).join('')}
-        </div>
-        <div style="margin-top:8px;font-size:11px;color:var(--success);font-weight:700;">⭐ أفضل معيار: ${topKpi.label} (${entry.scores[topKpi.id]}/10)</div>
+        <div class="entry-item-kpis">${chipsHtml}</div>
+        ${topLine ? `<div style="margin-top:8px;font-size:11px;color:var(--success);font-weight:700;">${topLine}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -3479,9 +3585,10 @@ function saveDraft() {
       dept:       document.getElementById('f-dept')?.value       || '',
       period:     document.getElementById('f-period')?.value     || '',
       notes:      document.getElementById('f-notes')?.value      || '',
+      jobType:    entryJobType,
       scores: {}
     };
-    KPIs.forEach((k, i) => {
+    entryCriteria.forEach((c, i) => {
       d.scores[i] = document.getElementById('kpi-input-' + i)?.value || '';
     });
     localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
@@ -3511,13 +3618,19 @@ function restoreDraft() {
     setVal('f-dept', d.dept);
     setVal('f-period', d.period);
     setVal('f-notes', d.notes);
+    // Rebuild the role-specific criteria before restoring per-criterion scores.
+    // (custom names keep the drafted job type; known employees auto-detect.)
+    if (d.jobType && JOBTYPE_KEYS.includes(d.jobType)) entryJobType = d.jobType;
+    applyEmpJobCriteria();
     let hasScores = false;
-    KPIs.forEach((k, i) => {
-      if (d.scores[i] !== undefined && d.scores[i] !== '') {
-        const el = document.getElementById('kpi-input-' + i);
-        if (el) { el.value = d.scores[i]; onKpiInput(i); hasScores = true; }
-      }
-    });
+    if (d.scores) {
+      entryCriteria.forEach((c, i) => {
+        if (d.scores[i] !== undefined && d.scores[i] !== '') {
+          const el = document.getElementById('kpi-input-' + i);
+          if (el) { el.value = d.scores[i]; onKpiInput(i); hasScores = true; }
+        }
+      });
+    }
     if (hasScores) showToast('📝 تم استرداد مسودة التقييم تلقائياً', 'info');
   } catch(e) {}
 }
@@ -3683,6 +3796,52 @@ const DEFAULT_EVAL_SETTINGS = {
 };
 let evaluationSettings = null;
 let currentJobType = 'sales';
+
+// ═══════════════════════════════════════════════════════════════════════
+//  EMPLOYEE JOB TYPE (نوع الوظيفة) — Sales / Cashier / Cleaner
+//  Drives which evaluation criteria appear for each employee. Stored per
+//  employee (empId → jobType key) and persisted separately in localStorage.
+// ═══════════════════════════════════════════════════════════════════════
+const LS_EMP_JOBTYPES = 'str_emp_jobtypes_v1';
+const JOBTYPE_KEYS = ['sales', 'cashier', 'cleaner'];
+// Sensible default mapping from the legacy القسم (dept) field
+const DEPT_TO_JOBTYPE = { 'المبيعات':'sales', 'خدمة العملاء':'cashier', 'العمليات':'cleaner' };
+function defaultJobTypeForDept(dept) { return DEPT_TO_JOBTYPE[dept] || 'sales'; }
+
+// Resolve an employee's job type (saved override → dept default → sales)
+function getEmpJobType(empId) {
+  const e = EMPLOYEES.find(x => x.id === empId);
+  if (!e) return 'sales';
+  if (e.jobType && JOBTYPE_KEYS.includes(e.jobType)) return e.jobType;
+  return defaultJobTypeForDept(e.dept);
+}
+function getEmpJobTypeByName(name) {
+  const e = EMPLOYEES.find(x => x.name === name);
+  return e ? getEmpJobType(e.id) : 'sales';
+}
+
+// Apply saved job-type overrides onto EMPLOYEES records at boot
+function loadEmpJobTypes() {
+  let map = {};
+  try { map = JSON.parse(localStorage.getItem(LS_EMP_JOBTYPES) || '{}') || {}; } catch(e) { map = {}; }
+  EMPLOYEES.forEach(e => {
+    if (map[e.id] && JOBTYPE_KEYS.includes(map[e.id])) e.jobType = map[e.id];
+    else if (!e.jobType) e.jobType = defaultJobTypeForDept(e.dept);
+  });
+}
+// Assign/change one employee's job type and persist it
+function setEmpJobType(empId, jt) {
+  if (!JOBTYPE_KEYS.includes(jt)) return;
+  const e = EMPLOYEES.find(x => x.id === empId);
+  if (!e) return;
+  e.jobType = jt;
+  let map = {};
+  try { map = JSON.parse(localStorage.getItem(LS_EMP_JOBTYPES) || '{}') || {}; } catch(e) { map = {}; }
+  map[empId] = jt;
+  try { localStorage.setItem(LS_EMP_JOBTYPES, JSON.stringify(map)); } catch(e) {}
+}
+// Shared palette for dynamically-rendered criteria (no per-criterion color in data)
+const CRIT_COLORS = ['#2563eb','#22c55e','#f59e0b','#8b5cf6','#06b6d4','#ec4899','#64748b','#ef4444'];
 
 // المهنة (Profession) — an attribute fully independent of the role (الوظيفة).
 // Stored per-user, persisted separately in localStorage. Declared before init().
@@ -4107,6 +4266,7 @@ function renderUsersTable() {
         <td><code style="background:var(--surface2);border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;">${u.password}</code></td>
         <td><span class="role-badge role-${u.role}">${ROLE_LABELS[u.role]}</span></td>
         <td>${professionSelectHtml(u)}</td>
+        <td>${u.empId ? jobTypeSelectHtml(u.empId) : '<span style="color:var(--text4);">—</span>'}</td>
         <td style="color:var(--text3);font-size:13px;">${linkedEmp}</td>
         <td>
           <select class="filter-select" style="font-size:12px;padding:5px 10px;"
@@ -4143,6 +4303,27 @@ function changeUserRole(userId, newRole) {
   u.role = newRole;                 // ← changing the role NEVER touches profession (req 10)
   renderUsersTable(); // refresh to reflect badge change
   showToast('✅ تم تغيير دور ' + u.name + ' إلى ' + ROLE_LABELS[newRole], 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EMPLOYEE JOB TYPE (نوع التقييم) — restricted to Sales/Cashier/Cleaner
+//  Assigning a job type controls which evaluation criteria appear for
+//  that employee in the daily-evaluation form.
+// ═══════════════════════════════════════════════════════════════
+function jobTypeSelectHtml(empId) {
+  const cur = getEmpJobType(empId);
+  const opts = JOB_TYPES.map(j =>
+    `<option value="${j.key}" ${j.key === cur ? 'selected' : ''}>${j.label}</option>`).join('');
+  return `<select class="filter-select" style="font-size:12px;padding:5px 10px;min-width:120px;"
+    onchange="onEmpJobTypeChange(${empId}, this.value)" aria-label="نوع التقييم">${opts}</select>`;
+}
+function onEmpJobTypeChange(empId, jt) {
+  setEmpJobType(empId, jt);
+  const e = EMPLOYEES.find(x => x.id === empId);
+  showToast('✅ تم تعيين نوع تقييم ' + (e ? e.name : '') + ' إلى «' + jobLabel(jt) + '»', 'success');
+  // If the evaluation form is currently showing this employee, refresh its criteria live
+  const sel = document.getElementById('f-emp');
+  if (e && sel && sel.value === e.name) applyEmpJobCriteria();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4246,6 +4427,7 @@ function loadPersistedChanges() {
   //    (EMP_DATA scores were already generated with default weights at startup)
   loadWeights();
   recalculateAllEmpData(); // re-apply any saved weights to final scores
+  loadEvalSettings();      // per-role evaluation criteria (Sales / Cashier / Cleaner)
 
   // 1. Apply saved credential edits to existing users
   try {
@@ -4281,6 +4463,9 @@ function loadPersistedChanges() {
 
   // 4. Apply saved professions onto all users (after existing + new users exist)
   loadProfessions();
+
+  // 5. Apply saved job-type assignments onto all employees (after new emps exist)
+  loadEmpJobTypes();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4392,8 +4577,9 @@ function saveNewEmployee() {
   const initials  = name.charAt(0);
 
   // Add to EMPLOYEES
-  const newEmp = { id: newEmpId, name, dept, baseScore: 75, color };
+  const newEmp = { id: newEmpId, name, dept, baseScore: 75, color, jobType: defaultJobTypeForDept(dept) };
   EMPLOYEES.push(newEmp);
+  setEmpJobType(newEmpId, newEmp.jobType); // persist the initial assignment
 
   // Generate EMP_DATA
   EMP_DATA[newEmpId] = {};
