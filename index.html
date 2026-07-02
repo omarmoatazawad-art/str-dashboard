@@ -1829,7 +1829,11 @@ body.employee-role { padding-bottom: 0 !important; }
           <div class="settings-section-sub">تعديل نسبة تأثير كل معيار في النتيجة النهائية · المجموع يجب أن يساوي 100%</div>
         </div>
       </div>
-      <div id="weight-editor-container" style="padding:20px 24px;"></div>
+      <!-- المعايير السبعة العامة — تُستخدم في لوحة المتابعة والتصنيف والتحليلات -->
+      <div style="padding:16px 24px 0;font-size:13px;font-weight:800;color:var(--text2);">📊 المعايير العامة السبعة (لوحة المتابعة والتصنيف)</div>
+      <div id="kpi-weight-editor-container" style="padding:14px 24px 20px;"></div>
+      <div style="border-top:1px solid var(--border);padding:16px 24px 0;font-size:13px;font-weight:800;color:var(--text2);">🏷️ معايير التقييم حسب نوع الوظيفة (نموذج الإدخال)</div>
+      <div id="weight-editor-container" style="padding:14px 24px 20px;"></div>
     </div>
 
   </div><!-- end view-settings -->
@@ -3850,8 +3854,16 @@ const PROFESSIONS = ['بائع كاشير','كاشير','مندوب مبيعات
 
 // ═══════════════════════════════════════════════════
 //  START
+//  Deferred to DOMContentLoaded: init() reads constants declared further
+//  down this script (LS_WEIGHTS_KEY, LS_CRED_UPDATES, ...). Calling it
+//  synchronously here throws a TDZ ReferenceError that silently aborts
+//  the rest of the script and breaks all boot-time persistence loading.
 // ═══════════════════════════════════════════════════
-init();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  STEP 5 — AUTH SYSTEM (function declarations — hoisted ✓)
@@ -4233,8 +4245,8 @@ function renderSettings() {
     renderUsersTable();
   }
 
-  // Always render weight editor for CEO and manager
-  if (isCeo || isManager) renderWeightEditor();
+  // Always render both weight editors for CEO and manager
+  if (isCeo || isManager) { renderKpiWeightEditor(); renderWeightEditor(); }
 }
 
 function saveNotifSettings() {
@@ -4773,7 +4785,7 @@ function renderWeightEditor() {
         <div class="weight-input-wrap">
           <input type="number" class="weight-input" id="jwi-${i}"
             value="${pct}" min="0" max="100" step="1"
-            oninput="onJobWeightInput()" onfocus="this.select()"
+            oninput="sanitizeWeightInput(this);onJobWeightInput()" onfocus="this.select()"
             aria-label="${c.name}">
           <span class="weight-pct">%</span>
         </div>
@@ -4834,11 +4846,11 @@ function onJobWeightInput() {
   crit.forEach((c, i) => {
     const inp = document.getElementById('jwi-' + i);
     if (!inp) return;
-    const v = Math.max(0, Math.min(100, parseInt(inp.value) || 0));
-    total += v;
+    const v = readWeightValue(inp);    // strict numeric read: empty → 0, clamped 0–100
+    total += v;                        // numeric addition — total is always a Number
     const fill = document.getElementById('jwfill-' + i);
     if (fill) fill.style.width = v + '%';
-    inp.classList.toggle('w-invalid', v === 0 && inp.value !== '');
+    inp.classList.toggle('w-invalid', inp.value !== '' && !isFinite(Number(inp.value)));
   });
   const isOk    = total === 100;
   const totalVal = document.getElementById('jw-total-val');
@@ -4852,9 +4864,8 @@ function onJobWeightInput() {
   if (errMsg) {
     if (!isOk) {
       const d = 100 - total;
-      errMsg.textContent = d > 0
-        ? `المجموع ${total}% — يلزم إضافة ${d}% للوصول إلى 100%`
-        : `المجموع ${total}% — يلزم تخفيض ${Math.abs(d)}% للوصول إلى 100%`;
+      errMsg.textContent = `⚠️ ${WEIGHT_SUM_ERROR} — المجموع الحالي ${total}%` +
+        (d > 0 ? ` (أضف ${d}%)` : ` (خفّض ${Math.abs(d)}%)`);
       errMsg.style.display = '';
     } else { errMsg.style.display = 'none'; }
   }
@@ -4867,11 +4878,12 @@ function saveJobWeights() {
   const crit = evaluationSettings[currentJobType].criteria;
   let total = 0;
   const newWeights = crit.map((c, i) => {
-    const v = Math.max(0, Math.min(100, parseInt(document.getElementById('jwi-' + i)?.value) || 0));
+    const v = readWeightValue(document.getElementById('jwi-' + i));  // strict: empty → 0, clamped
     total += v;
     return v;
   });
-  if (total !== 100) { showToast(`⚠️ المجموع ${total}% — يجب أن يساوي 100% قبل الحفظ`, 'warning'); return; }
+  // Strict validation: refuse to save unless the weights sum to exactly 100%
+  if (total !== 100) { showToast(`⚠️ ${WEIGHT_SUM_ERROR} — المجموع الحالي ${total}%`, 'warning'); return; }
 
   crit.forEach((c, i) => { c.weight = newWeights[i]; });
   persistEvalSettings();
@@ -4894,17 +4906,90 @@ function resetJobWeights() {
   showToast('ℹ️ تم استعادة الأوزان الافتراضية', 'info');
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  WEIGHT INPUT PARSING — shared by both weight editors
+//  Rules: empty field counts as 0 · negatives blocked · integers only ·
+//  strict Number() conversion (never string concatenation) · clamp 0–100
+// ═══════════════════════════════════════════════════════════════
+function sanitizeWeightInput(inp) {
+  const raw = inp.value;
+  if (raw === '') return;                            // empty allowed → counted as 0
+  let n = Number(raw);                               // strict conversion ('12abc' → NaN)
+  if (!isFinite(n)) { inp.value = ''; return; }      // garbage → clear (counts as 0)
+  n = Math.round(n);                                 // integer percentages only
+  n = Math.max(0, Math.min(100, n));                 // block negatives and >100
+  if (String(n) !== raw) inp.value = String(n);      // keep display = computed value
+}
+// Read one weight field as a safe number (empty → 0)
+function readWeightValue(inp) {
+  if (!inp) return 0;
+  const raw = String(inp.value).trim();
+  if (raw === '') return 0;
+  const n = Number(raw);
+  if (!isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+const WEIGHT_SUM_ERROR = 'المجموع يجب أن يساوي 100%';
+
+/* ── Render the 7-criteria global weight editor (dashboard KPIs) ── */
+function renderKpiWeightEditor() {
+  const container = document.getElementById('kpi-weight-editor-container');
+  if (!container) return;
+  const rows = KPIs.map(k => {
+    const pct = Math.round(k.weight * 100);
+    return `
+      <div class="weight-row">
+        <span class="weight-icon">${k.icon}</span>
+        <div class="weight-label">${k.label}</div>
+        <div class="weight-input-wrap">
+          <input type="number" class="weight-input" id="wi-${k.id}"
+            value="${pct}" min="0" max="100" step="1"
+            oninput="sanitizeWeightInput(this);onWeightInput()" onfocus="this.select()"
+            aria-label="${k.label}">
+          <span class="weight-pct">%</span>
+        </div>
+        <div class="weight-bar-bg">
+          <div class="weight-bar-fill" id="wfill-${k.id}" style="width:${pct}%;background:${k.color};"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="weight-editor">
+      <div class="weight-hint">
+        المعايير السبعة المعتمدة في حساب نتائج لوحة المتابعة · أدخل نسبة لكل معيار · المجموع يجب أن يساوي 100%
+      </div>
+      ${rows}
+      <div class="weight-total-row" id="w-total-row">
+        <span class="weight-total-label">المجموع الكلي</span>
+        <span class="weight-total-val" id="w-total-val">100%</span>
+      </div>
+      <div class="weight-msg err" id="w-err-msg"></div>
+      <div class="weight-msg ok"  id="w-ok-msg"></div>
+      <div class="weight-actions">
+        <button class="btn-sm btn-ghost" onclick="resetWeightsToDefault()" title="استعادة الأوزان الافتراضية">
+          ↺ استعادة الافتراضي
+        </button>
+        <button class="btn-sm btn-primary" id="btn-save-weights" onclick="confirmSaveWeights()">
+          💾 حفظ
+        </button>
+      </div>
+    </div>`;
+
+  onWeightInput(); // initialise total + validation state
+}
+
 /* Live update: recalculate total and validate on every keystroke */
 function onWeightInput() {
   let total = 0;
   KPIs.forEach(k => {
     const inp = document.getElementById('wi-' + k.id);
     if (!inp) return;
-    const v = Math.max(0, Math.min(100, parseInt(inp.value) || 0));
-    total += v;
+    const v = readWeightValue(inp);    // strict numeric read: empty → 0, clamped 0–100
+    total += v;                        // numeric addition — total is always a Number
     const fill = document.getElementById('wfill-' + k.id);
     if (fill) fill.style.width = v + '%';
-    inp.classList.toggle('w-invalid', v === 0 && inp.value !== '');
+    inp.classList.toggle('w-invalid', inp.value !== '' && !isFinite(Number(inp.value)));
   });
 
   const totalRow  = document.getElementById('w-total-row');
@@ -4925,9 +5010,8 @@ function onWeightInput() {
   if (errMsg) {
     if (!isOk) {
       const diff = 100 - total;
-      errMsg.textContent = diff > 0
-        ? `المجموع ${total}% — يلزم إضافة ${diff}% للوصول إلى 100%`
-        : `المجموع ${total}% — يلزم تخفيض ${Math.abs(diff)}% للوصول إلى 100%`;
+      errMsg.textContent = `⚠️ ${WEIGHT_SUM_ERROR} — المجموع الحالي ${total}%` +
+        (diff > 0 ? ` (أضف ${diff}%)` : ` (خفّض ${Math.abs(diff)}%)`);
       errMsg.style.display = '';
     } else {
       errMsg.style.display = 'none';
@@ -4936,7 +5020,7 @@ function onWeightInput() {
   if (okMsg) okMsg.style.display = 'none';
 }
 
-/* Confirm then save the new weights */
+/* Confirm then save the new weights — saving is BLOCKED unless total = exactly 100% */
 function confirmSaveWeights() {
   const newWeights = {};
   let total = 0;
@@ -4944,15 +5028,21 @@ function confirmSaveWeights() {
 
   KPIs.forEach(k => {
     const inp = document.getElementById('wi-' + k.id);
-    const pct = Math.max(0, Math.min(100, parseInt(inp?.value) || 0));
+    const pct = readWeightValue(inp);   // strict numeric read: empty → 0, clamped 0–100
     newWeights[k.id] = pct / 100;
     total += pct;
     const oldPct = Math.round(k.weight * 100);
     if (oldPct !== pct) changes.push(`${k.icon} ${k.label}: ${oldPct}%  →  ${pct}%`);
   });
 
+  // Strict validation: refuse to save when the 7 fields don't sum to exactly 100%
   if (total !== 100) {
-    showToast(`⚠️ المجموع ${total}% — يجب أن يساوي 100%`, 'warning');
+    const errMsg = document.getElementById('w-err-msg');
+    if (errMsg) {
+      errMsg.textContent = `⚠️ ${WEIGHT_SUM_ERROR} — المجموع الحالي ${total}%`;
+      errMsg.style.display = '';
+    }
+    showToast(`⚠️ ${WEIGHT_SUM_ERROR} — المجموع الحالي ${total}%`, 'warning');
     return;
   }
 
@@ -4980,8 +5070,8 @@ function confirmSaveWeights() {
   // Refresh all dashboards
   refreshAllDashboards();
 
-  // Update the editor UI
-  renderWeightEditor();
+  // Update the editor UI (re-render the 7-criteria editor with saved values)
+  renderKpiWeightEditor();
 
   // Show success message inside editor
   const okMsg = document.getElementById('w-ok-msg');
