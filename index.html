@@ -3779,11 +3779,13 @@ const JOB_TYPES = [
 ];
 const DEFAULT_EVAL_SETTINGS = {
   sales:   { criteria: [
-    { name:'حسن التعامل مع العميل',   weight:30 },
-    { name:'تحقيق المبيعات',          weight:25 },
-    { name:'الالتزام بالحضور',        weight:20 },
-    { name:'الالتزام بالتعليمات',     weight:15 },
-    { name:'الالتزام بالمهام اليومية', weight:10 },
+    { name:'حسن الأسلوب مع العميل',    weight:30 },
+    { name:'تحقيق المبيعات',           weight:25 },
+    { name:'الالتزام بالحضور',         weight:20 },
+    { name:'الالتزام بالتعليمات',      weight:10 },
+    { name:'الالتزام بالمهام اليومية', weight:7 },
+    { name:'التعاون وروح الفريق',      weight:5 },
+    { name:'المظهر العام',             weight:3 },
   ]},
   cleaner: { criteria: [
     { name:'نظافة المكان',        weight:40 },
@@ -4760,7 +4762,22 @@ function loadEvalSettings() {
   if (!evaluationSettings || !evaluationSettings.sales || !evaluationSettings.cleaner || !evaluationSettings.cashier) {
     evaluationSettings = JSON.parse(JSON.stringify(DEFAULT_EVAL_SETTINGS)); // deep clone
     persistEvalSettings();
+    return;
   }
+  // Migration: each role's saved criteria must match the current default
+  // criteria NAMES (e.g. sales moved from 5 → 7 criteria). If the names
+  // differ, reseed that role from defaults; custom WEIGHTS on the current
+  // criteria set are preserved. Other roles are left untouched.
+  let migrated = false;
+  JOB_TYPES.forEach(j => {
+    const savedNames   = (evaluationSettings[j.key].criteria || []).map(c => c.name).join('|');
+    const defaultNames = DEFAULT_EVAL_SETTINGS[j.key].criteria.map(c => c.name).join('|');
+    if (savedNames !== defaultNames) {
+      evaluationSettings[j.key] = JSON.parse(JSON.stringify(DEFAULT_EVAL_SETTINGS[j.key]));
+      migrated = true;
+    }
+  });
+  if (migrated) persistEvalSettings();
 }
 function persistEvalSettings() { try { localStorage.setItem(LS_JOB_WEIGHTS, JSON.stringify(evaluationSettings)); } catch(e) {} }
 function jobLabel(key) { const j = JOB_TYPES.find(x => x.key === key); return j ? j.label : key; }
