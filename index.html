@@ -207,6 +207,8 @@ tbody td:first-child{font-weight:700;color:var(--text1);}
 .analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
 @media(max-width:900px){.analytics-grid{grid-template-columns:1fr;}}
 /* ── HISTORY (السجل) PAGE ── */
+#hist-stat-cards{grid-template-columns:repeat(4,1fr);}
+@media(max-width:768px){#hist-stat-cards{grid-template-columns:repeat(2,1fr);}}
 .hist-filters-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:center;}
 @media(max-width:1024px){.hist-filters-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:520px){.hist-filters-grid{grid-template-columns:1fr;}}
@@ -1549,6 +1551,14 @@ body.employee-role { padding-bottom: 0 !important; }
               <input type="text" class="form-input" id="f-emp-custom" placeholder="اكتب الاسم..." style="display:none;margin-top:6px;">
             </div>
             <div class="form-group">
+              <label class="form-label">حالة الموظف <span>*</span></label>
+              <select class="form-select" id="f-att-status" onchange="onAttStatusChange(this.value)">
+                <option value="present" selected>✅ حاضر</option>
+                <option value="leave">🏖️ إجازة</option>
+                <option value="excused">📝 عذر</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label class="form-label">المشرف / المقيِّم</label>
               <select class="form-select" id="f-rater" onchange="onRaterSelectChange(this)">
                 <option value="">— اختر مشرف —</option>
@@ -1580,8 +1590,15 @@ body.employee-role { padding-bottom: 0 !important; }
             <textarea class="form-notes" id="f-notes" rows="2" placeholder="أي ملاحظات على الأداء..."></textarea>
           </div>
 
+          <!-- Absence notice (إجازة / عذر) — replaces the criteria when the employee is not present -->
+          <div id="absence-notice" style="display:none;padding:22px 18px;text-align:center;border:1.5px dashed var(--warning);border-radius:12px;background:var(--warning-light);margin-bottom:16px;">
+            <div style="font-size:34px;margin-bottom:8px;" id="absence-notice-icon">🏖️</div>
+            <div style="font-size:15px;font-weight:800;color:var(--warning-dark);" id="absence-notice-title">الموظف في إجازة اليوم</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text3);margin-top:6px;">لا يلزم إدخال تقييم — سيتم حفظ سجل الحضور فقط، ولن يؤثر ذلك على متوسط أداء الموظف</div>
+          </div>
+
           <!-- KPI Inputs -->
-          <div class="kpi-form-section">
+          <div class="kpi-form-section" id="kpi-form-section">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
               <div style="font-size:13px;font-weight:700;color:var(--text2);">معايير التقييم المرجّحة</div>
               <div id="entry-job-indicator"></div>
@@ -1672,7 +1689,9 @@ body.employee-role { padding-bottom: 0 !important; }
         <select class="filter-select" id="hist-status" onchange="onHistFilterChange()">
           <option value="">حالة التقييم: الكل</option>
           <option value="evaluated">✅ تم تقييمهم</option>
-          <option value="missing">❌ لم يتم تقييمهم</option>
+          <option value="leave">🏖️ إجازة</option>
+          <option value="excused">📝 عذر</option>
+          <option value="missing">❌ لا يوجد سجل</option>
         </select>
         <button class="btn-sm btn-ghost" onclick="resetHistFilters()" style="white-space:nowrap;">↺ مسح الفلاتر</button>
       </div>
@@ -2202,6 +2221,7 @@ function init() {
   loadPersistedChanges(); // apply saved credential edits + new employees before login
   setNavDate();
   loadEntries();
+  loadAttendance();
   // Auth-aware boot: show login, then check session
   checkAutoLogin();
 }
@@ -2713,7 +2733,8 @@ const HIST_RANGES = [
 const HIST_PAGE_SIZE = 10;
 let histRange = '7d', histPage = 1;
 let histSearch = '', histRole = '', histRater = '', histMin = '', histMax = '', histRating = '', histStatus = '';
-let _histFiltered = [];   // cache of the current filtered list (reused by exports)
+let _histFiltered = [];   // cache of the current filtered evaluations (reused by exports)
+let _histAtt = [];        // cache of the current filtered attendance records (إجازة/عذر)
 
 function histRangeLabel() {
   const r = HIST_RANGES.find(x => x.key === histRange);
@@ -2770,6 +2791,21 @@ function getFilteredHistory() {
     if (histMin !== '' && e.final < Number(histMin)) return false;
     if (histMax !== '' && e.final > Number(histMax)) return false;
     if (histRating && getStatus(e.final).key !== histRating) return false;
+    return true;
+  }).sort((a, b) => new Date(b.dateISO) - new Date(a.dateISO));
+}
+
+// Attendance records (إجازة/عذر) matching the same date/search/role/rater
+// filters. Score and rating filters don't apply — these rows carry no scores.
+function getFilteredAttendance() {
+  const { start, end } = getHistRangeBounds();
+  const q = histSearch.trim().toLowerCase();
+  return attendanceRecords.filter(r => {
+    const d = new Date(r.dateISO);
+    if (isNaN(d) || d < start || d > end) return false;
+    if (q && !r.empName.toLowerCase().includes(q) && !(r.rater || '').toLowerCase().includes(q)) return false;
+    if (histRole && (r.jobType || getEmpJobTypeByName(r.empName)) !== histRole) return false;
+    if (histRater && (r.rater || '—') !== histRater) return false;
     return true;
   }).sort((a, b) => new Date(b.dateISO) - new Date(a.dateISO));
 }
@@ -2831,22 +2867,31 @@ function renderHistory() {
 
   // 3. Filtered records (cached for exports + pagination)
   _histFiltered = getFilteredHistory();
+  _histAtt = getFilteredAttendance();
   const evaluatedNames = new Set(_histFiltered.map(e => e.empName));
+  // Latest attendance status per employee in range (evaluation takes priority)
+  const attStatusByEmp = {};
+  _histAtt.forEach(r => { if (!attStatusByEmp[r.empName]) attStatusByEmp[r.empName] = r.status; });
 
-  // 4. Summary stat cards
+  // 4. Summary stat cards — absences NEVER affect the score averages:
+  //    avg/max/min are computed from real evaluations only.
   const finals = _histFiltered.map(e => e.final);
   const evaluatedCount = EMPLOYEES.filter(emp => evaluatedNames.has(emp.name)).length;
-  const missingCount   = EMPLOYEES.length - evaluatedCount;
+  const leaveCount     = EMPLOYEES.filter(emp => !evaluatedNames.has(emp.name) && attStatusByEmp[emp.name] === 'leave').length;
+  const excusedCount   = EMPLOYEES.filter(emp => !evaluatedNames.has(emp.name) && attStatusByEmp[emp.name] === 'excused').length;
+  const missingCount   = EMPLOYEES.length - evaluatedCount - leaveCount - excusedCount;
   const avg = finals.length ? finals.reduce((a, b) => a + b, 0) / finals.length : 0;
   const max = finals.length ? Math.max(...finals) : 0;
   const min = finals.length ? Math.min(...finals) : 0;
   const cards = [
     { color:'blue',   icon:'👥', label:'إجمالي الموظفين',  value: String(EMPLOYEES.length) },
     { color:'green',  icon:'✅', label:'تم تقييمهم',        value: String(evaluatedCount) },
-    { color:'pink',   icon:'❌', label:'لم يتم تقييمهم',    value: String(missingCount) },
+    { color:'cyan',   icon:'🏖️', label:'إجازة',             value: String(leaveCount) },
+    { color:'amber',  icon:'📝', label:'عذر',               value: String(excusedCount) },
+    { color:'pink',   icon:'❌', label:'بدون سجل',          value: String(missingCount) },
     { color:'purple', icon:'📊', label:'متوسط النتائج',     value: finals.length ? avg.toFixed(1) + '%' : '—' },
-    { color:'amber',  icon:'🏆', label:'أعلى نتيجة',        value: finals.length ? max.toFixed(1) + '%' : '—' },
-    { color:'cyan',   icon:'📉', label:'أدنى نتيجة',        value: finals.length ? min.toFixed(1) + '%' : '—' },
+    { color:'green',  icon:'🏆', label:'أعلى نتيجة',        value: finals.length ? max.toFixed(1) + '%' : '—' },
+    { color:'blue',   icon:'📉', label:'أدنى نتيجة',        value: finals.length ? min.toFixed(1) + '%' : '—' },
   ];
   document.getElementById('hist-stat-cards').innerHTML = cards.map(c => `
     <div class="stat-card ${c.color}">
@@ -2859,40 +2904,56 @@ function renderHistory() {
   const statusSub = document.getElementById('hist-status-sub');
   if (statusSub) statusSub.textContent = 'الفترة: ' + histRangeLabel();
   const q = histSearch.trim().toLowerCase();
+  // Per-employee state: تم التقييم > إجازة > عذر > لا يوجد سجل
+  const empState = emp => evaluatedNames.has(emp.name) ? 'evaluated' : (attStatusByEmp[emp.name] || 'missing');
+  const STATE_META = {
+    evaluated: { order:0, cls:'status-excellent', label:'✅ تم التقييم' },
+    leave:     { order:1, cls:'status-verygood',  label:'🏖️ إجازة' },
+    excused:   { order:2, cls:'status-good',      label:'📝 عذر' },
+    missing:   { order:3, cls:'status-needswork', label:'❌ لا يوجد سجل' },
+  };
   const statusRows = EMPLOYEES
     .filter(emp => !q || emp.name.toLowerCase().includes(q))
     .filter(emp => !histRole || getEmpJobType(emp.id) === histRole)
-    .filter(emp => {
-      if (histStatus === 'evaluated') return evaluatedNames.has(emp.name);
-      if (histStatus === 'missing')   return !evaluatedNames.has(emp.name);
-      return true;
-    })
-    .sort((a, b) => Number(evaluatedNames.has(b.name)) - Number(evaluatedNames.has(a.name)));
+    .filter(emp => !histStatus || empState(emp) === histStatus)
+    .sort((a, b) => STATE_META[empState(a)].order - STATE_META[empState(b)].order);
   document.getElementById('hist-status-list').innerHTML = statusRows.length ? statusRows.map(emp => {
-    const done  = evaluatedNames.has(emp.name);
-    const count = done ? _histFiltered.filter(e => e.empName === emp.name).length : 0;
+    const state = empState(emp);
+    const meta  = STATE_META[state];
+    const count = state === 'evaluated' ? _histFiltered.filter(e => e.empName === emp.name).length : 0;
     return `
       <div class="hist-status-row" onclick="openEmpHistory('${emp.name.replace(/'/g, "\\'")}')">
         <div class="performer-avatar" style="background:${emp.color};width:30px;height:30px;font-size:12px;">${getAvatarInitial(emp.name)}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:700;color:var(--text1);">${emp.name}</div>
-          <div style="font-size:10px;color:var(--text3);font-weight:600;">${jobLabel(getEmpJobType(emp.id))}${done ? ' · ' + count + ' تقييم' : ''}</div>
+          <div style="font-size:10px;color:var(--text3);font-weight:600;">${jobLabel(getEmpJobType(emp.id))}${count ? ' · ' + count + ' تقييم' : ''}</div>
         </div>
-        <span class="status-badge ${done ? 'status-excellent' : 'status-needswork'}" style="font-size:10px;">
-          ${done ? '✅ تم التقييم' : '❌ لم يتم التقييم'}
-        </span>
+        <span class="status-badge ${meta.cls}" style="font-size:10px;">${meta.label}</span>
       </div>`;
   }).join('') : `<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px;font-weight:600;">لا يوجد موظفون مطابقون للفلاتر</div>`;
 
-  // 6. Records list + pagination
-  const badge = document.getElementById('hist-count-badge');
-  if (badge) badge.textContent = _histFiltered.length + ' تقييم';
-  const listEl = document.getElementById('hist-records-list');
-  const totalPages = Math.max(1, Math.ceil(_histFiltered.length / HIST_PAGE_SIZE));
-  if (histPage > totalPages) histPage = totalPages;
-  const pageItems = _histFiltered.slice((histPage - 1) * HIST_PAGE_SIZE, histPage * HIST_PAGE_SIZE);
+  // 6. Records list + pagination — evaluations merged with attendance
+  //    records (إجازة/عذر), newest first. Score/rating filters hide
+  //    attendance rows since they carry no scores.
+  const scoreFiltersActive = histMin !== '' || histMax !== '' || histRating !== '';
+  const showAtt = !scoreFiltersActive && (!histStatus || histStatus === 'leave' || histStatus === 'excused');
+  const showEval = !histStatus || histStatus === 'evaluated';
+  const merged = [
+    ...(showEval ? _histFiltered : []),
+    ...(showAtt ? _histAtt.filter(r => !histStatus || r.status === histStatus).map(r => ({ ...r, _att: true })) : [])
+  ].sort((a, b) => new Date(b.dateISO) - new Date(a.dateISO));
 
-  listEl.innerHTML = pageItems.length ? pageItems.map(e => histRecordCard(e)).join('') : `
+  const badge = document.getElementById('hist-count-badge');
+  if (badge) {
+    const attN = merged.filter(x => x._att).length;
+    badge.textContent = (merged.length - attN) + ' تقييم' + (attN ? ' · ' + attN + ' سجل حضور' : '');
+  }
+  const listEl = document.getElementById('hist-records-list');
+  const totalPages = Math.max(1, Math.ceil(merged.length / HIST_PAGE_SIZE));
+  if (histPage > totalPages) histPage = totalPages;
+  const pageItems = merged.slice((histPage - 1) * HIST_PAGE_SIZE, histPage * HIST_PAGE_SIZE);
+
+  listEl.innerHTML = pageItems.length ? pageItems.map(e => e._att ? histAttCard(e) : histRecordCard(e)).join('') : `
     <div class="empty-entries" style="padding:32px;">
       <div class="empty-entries-icon">📜</div>
       <div style="font-size:14px;font-weight:700;color:var(--text3);margin-bottom:6px;">لا توجد تقييمات في هذه الفترة</div>
@@ -2946,6 +3007,28 @@ function histRecordCard(e) {
     </div>`;
 }
 
+// One attendance record card (إجازة / عذر) — visually distinct, no scores
+function histAttCard(r) {
+  const st = ATT_STATUS[r.status] || { label: r.statusLabel || 'إجازة', icon: '🏖️' };
+  const isLeave = r.status === 'leave';
+  return `
+    <div class="entry-item-card" onclick="openEmpHistory('${r.empName.replace(/'/g, "\\'")}')" style="cursor:pointer;border-right:3px solid var(--warning);">
+      <div class="entry-item-top">
+        <div>
+          <div class="entry-item-name">${r.empName}
+            <span style="font-size:10px;font-weight:800;color:var(--primary);background:var(--primary-light);padding:2px 8px;border-radius:10px;margin-right:6px;">🏷️ ${jobLabel(r.jobType || getEmpJobTypeByName(r.empName))}</span>
+          </div>
+          <div class="entry-item-meta">📅 ${r.dateLabel || ''} · 🕐 ${r.timeLabel || ''}${r.period ? ' · ' + r.period : ''}</div>
+          ${r.rater && r.rater !== '—' ? `<div class="entry-item-meta">👤 المشرف: ${r.rater}</div>` : ''}
+          <div class="entry-item-meta" style="color:var(--warning-dark);font-weight:700;">${st.icon} لا يلزم تقييم — الموظف ${isLeave ? 'في إجازة' : 'غائب بعذر'}</div>
+        </div>
+        <div style="text-align:left;">
+          <span class="status-badge ${isLeave ? 'status-verygood' : 'status-good'}" style="font-size:11px;">${st.icon} ${st.label}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
 // ── Employee full-history modal ──
 let histEmpName = null, histEmpSortDesc = true;
 function openEmpHistory(name) { histEmpName = name; histEmpSortDesc = true; renderEmpHistoryModal(); }
@@ -2965,9 +3048,10 @@ function renderEmpHistoryModal() {
     document.body.appendChild(overlay);
   }
   const emp = EMPLOYEES.find(x => x.name === histEmpName);
-  const all = savedEntries
-    .filter(e => e.empName === histEmpName)
-    .sort((a, b) => histEmpSortDesc
+  const all = [
+    ...savedEntries.filter(e => e.empName === histEmpName),
+    ...attendanceRecords.filter(r => r.empName === histEmpName).map(r => ({ ...r, _att: true }))
+  ].sort((a, b) => histEmpSortDesc
       ? new Date(b.dateISO) - new Date(a.dateISO)
       : new Date(a.dateISO) - new Date(b.dateISO));
 
@@ -2977,7 +3061,7 @@ function renderEmpHistoryModal() {
         <div class="performer-avatar" style="background:${emp ? emp.color : 'var(--primary)'};width:42px;height:42px;font-size:16px;">${getAvatarInitial(histEmpName || '؟')}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:16px;font-weight:900;color:var(--text1);">${histEmpName}</div>
-          <div style="font-size:11px;color:var(--text3);font-weight:600;">📜 السجل الكامل · ${all.length} تقييم${emp ? ' · ' + jobLabel(getEmpJobType(emp.id)) : ''}</div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;">📜 السجل الكامل · ${all.filter(x => !x._att).length} تقييم${all.some(x => x._att) ? ' · ' + all.filter(x => x._att).length + ' سجل حضور' : ''}${emp ? ' · ' + jobLabel(getEmpJobType(emp.id)) : ''}</div>
         </div>
         <select class="filter-select" style="font-size:11px;padding:5px 8px;" onchange="toggleEmpHistorySort(this.value)">
           <option value="desc" ${histEmpSortDesc ? 'selected' : ''}>⬇️ الأحدث أولاً</option>
@@ -2987,6 +3071,22 @@ function renderEmpHistoryModal() {
       </div>
       <div style="overflow-y:auto;padding:12px 16px;">
         ${all.length ? all.map(e => {
+          if (e._att) {
+            const ast = ATT_STATUS[e.status] || { label: e.statusLabel || 'إجازة', icon: '🏖️' };
+            return `
+            <div class="entry-item-card" style="margin-bottom:10px;border-right:3px solid var(--warning);">
+              <div class="entry-item-top">
+                <div>
+                  <div class="entry-item-meta" style="font-weight:800;color:var(--text1);">📅 ${e.dateLabel || ''} · 🕐 ${e.timeLabel || ''}</div>
+                  ${e.rater && e.rater !== '—' ? `<div class="entry-item-meta">👤 المشرف: ${e.rater}</div>` : ''}
+                  <div class="entry-item-meta" style="color:var(--warning-dark);font-weight:700;">${ast.icon} لا يلزم تقييم — ${e.status === 'leave' ? 'في إجازة' : 'غائب بعذر'}</div>
+                </div>
+                <div style="text-align:left;">
+                  <span class="status-badge ${e.status === 'leave' ? 'status-verygood' : 'status-good'}" style="font-size:11px;">${ast.icon} ${ast.label}</span>
+                </div>
+              </div>
+            </div>`;
+          }
           const st = getStatus(e.final);
           const crit = histEntryCriteria(e);
           return `
@@ -3015,20 +3115,39 @@ function renderEmpHistoryModal() {
 
 // ── Exports (respect the active filters exactly) ──
 function histExportRows() {
-  const list = _histFiltered.length || currentView === 'history' ? _histFiltered : getFilteredHistory();
-  const headers = ['التاريخ','الوقت','الموظف','الوظيفة','المقيّم','النتيجة %','التقدير','المعايير','ملاحظات'];
-  const rows = list.map(e => [
-    e.dateLabel || new Date(e.dateISO).toLocaleDateString('ar-EG'),
-    e.timeLabel || '',
-    e.empName,
-    histEntryRoleLabel(e),
-    e.rater || '—',
-    Number(e.final).toFixed(1),
-    getStatus(e.final).label.replace(/[^؀-ۿA-Za-z\s]/g, '').trim(),
-    histEntryCriteria(e).map(c => `${c.name}: ${c.score}/10`).join(' | '),
-    e.notes || ''
-  ]);
-  return { headers, rows };
+  const onHistView = currentView === 'history';
+  const list = onHistView ? _histFiltered : getFilteredHistory();
+  const scoreFiltersActive = histMin !== '' || histMax !== '' || histRating !== '';
+  const attList = scoreFiltersActive ? [] : (onHistView ? _histAtt : getFilteredAttendance());
+  const headers = ['التاريخ','الوقت','الموظف','الوظيفة','الحالة','المقيّم','النتيجة %','التقدير','المعايير','ملاحظات'];
+  // Evaluations + attendance records, merged newest first
+  const merged = [
+    ...list.map(e => ({ d: e.dateISO, row: [
+      e.dateLabel || new Date(e.dateISO).toLocaleDateString('ar-EG'),
+      e.timeLabel || '',
+      e.empName,
+      histEntryRoleLabel(e),
+      'تم التقييم',
+      e.rater || '—',
+      Number(e.final).toFixed(1),
+      getStatus(e.final).label.replace(/[^؀-ۿA-Za-z\s]/g, '').trim(),
+      histEntryCriteria(e).map(c => `${c.name}: ${c.score}/10`).join(' | '),
+      e.notes || ''
+    ]})),
+    ...attList.map(r => ({ d: r.dateISO, row: [
+      r.dateLabel || new Date(r.dateISO).toLocaleDateString('ar-EG'),
+      r.timeLabel || '',
+      r.empName,
+      jobLabel(r.jobType || getEmpJobTypeByName(r.empName)),
+      r.statusLabel || (ATT_STATUS[r.status] ? ATT_STATUS[r.status].label : ''),
+      r.rater || '—',
+      '—',
+      '—',
+      '—',
+      'لا يلزم تقييم — الموظف غير حاضر'
+    ]}))
+  ].sort((a, b) => new Date(b.d) - new Date(a.d));
+  return { headers, rows: merged.map(x => x.row) };
 }
 function csvEsc(v) { v = String(v ?? ''); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
 
@@ -3586,6 +3705,90 @@ function persistEntries() {
   localStorage.setItem(ENTRY_STORAGE_KEY, JSON.stringify(savedEntries));
 }
 
+// ═══════════════════════════════════════════════════
+//  ATTENDANCE STATUS (حالة الموظف) — حاضر / إجازة / عذر
+//  Absence records are stored SEPARATELY from evaluations:
+//  no fake scores are ever created, and absent employees
+//  never affect performance averages.
+// ═══════════════════════════════════════════════════
+const ATTENDANCE_STORAGE_KEY = 'str_attendance_v1';
+const ATT_STATUS = {
+  present: { label:'حاضر',  icon:'✅' },
+  leave:   { label:'إجازة', icon:'🏖️' },
+  excused: { label:'عذر',   icon:'📝' },
+};
+let attendanceRecords = [];
+let entryAttStatus = 'present';
+
+function loadAttendance() {
+  try { attendanceRecords = JSON.parse(localStorage.getItem(ATTENDANCE_STORAGE_KEY) || '[]'); } catch(e) { attendanceRecords = []; }
+}
+function persistAttendance() {
+  try { localStorage.setItem(ATTENDANCE_STORAGE_KEY, JSON.stringify(attendanceRecords)); } catch(e) {}
+}
+
+// Toggle the evaluation form sections based on حالة الموظف
+function onAttStatusChange(v) {
+  entryAttStatus = ATT_STATUS[v] ? v : 'present';
+  updateEntryAttendanceUI();
+  scheduleDraftSave();
+}
+function updateEntryAttendanceUI() {
+  const absent = entryAttStatus !== 'present';
+  const st = ATT_STATUS[entryAttStatus];
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+
+  show('kpi-form-section', !absent);   // criteria inputs
+  show('total-row-form',   !absent);   // final score row
+  show('form-pct-strip',   !absent);   // percentage strip
+  show('absence-notice',    absent);   // "no evaluation required" notice
+
+  if (absent) {
+    const icon  = document.getElementById('absence-notice-icon');
+    const title = document.getElementById('absence-notice-title');
+    if (icon)  icon.textContent  = st.icon;
+    if (title) title.textContent = entryAttStatus === 'leave' ? 'الموظف في إجازة اليوم' : 'الموظف غائب بعذر اليوم';
+  }
+
+  // Save button label
+  const btn = document.getElementById('btn-save');
+  if (btn) btn.innerHTML = absent ? `<span>💾</span> حفظ حالة الحضور (${st.label})` : '<span>💾</span> حفظ التقييم';
+
+  // Mobile sticky score bar: show the status instead of a score
+  const mVal = document.getElementById('m-score-val');
+  const mGrade = document.getElementById('m-score-grade');
+  if (absent) {
+    if (mVal)   mVal.textContent   = st.icon + ' ' + st.label;
+    if (mGrade) mGrade.textContent = 'لا يلزم تقييم';
+  } else {
+    if (mVal && mVal.textContent.indexOf('%') === -1) { mVal.textContent = '0%'; if (mGrade) mGrade.textContent = '—'; recalcTotal(); }
+  }
+}
+
+// Save an attendance record instead of an evaluation (إجازة / عذر)
+function saveAttendanceRecord(empName) {
+  const st = ATT_STATUS[entryAttStatus];
+  const empRec = EMPLOYEES.find(x => x.name === empName);
+  const now = new Date();
+  attendanceRecords.unshift({
+    id: Date.now(),
+    empId: empRec ? empRec.id : null,
+    empName,
+    jobType: empRec ? getEmpJobType(empRec.id) : entryJobType,
+    status: entryAttStatus,             // 'leave' | 'excused'
+    statusLabel: st.label,
+    rater: getEntryRaterName() || '—',
+    period: document.getElementById('f-period')?.value || '',
+    dateISO: now.toISOString(),
+    dateLabel: now.toLocaleDateString('ar-EG', {weekday:'long', year:'numeric', month:'long', day:'numeric'}),
+    timeLabel: now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}),
+  });
+  persistAttendance();
+  clearDraft();
+  showToast(`${st.icon} تم تسجيل حالة ${empName}: ${st.label} — لا يلزم تقييم لهذا اليوم`, 'success');
+  resetEntryForm();
+}
+
 // ── DYNAMIC PER-ROLE EVALUATION CRITERIA (Sales / Cashier / Cleaner) ──
 // The criteria shown in the entry form depend on the selected employee's
 // assigned job type. entryCriteria holds the criteria currently displayed.
@@ -3686,6 +3889,11 @@ function initEntryView() {
   entryCriteria = [];
   entryJobType  = null;
   renderEntryCriteria();
+
+  // Sync حالة الموظف state with the select (DOM persists across view switches)
+  entryAttStatus = document.getElementById('f-att-status')?.value || 'present';
+  if (!ATT_STATUS[entryAttStatus]) entryAttStatus = 'present';
+  updateEntryAttendanceUI();
 
   syncEmpDropdown();
   renderEntriesList();
@@ -3799,6 +4007,10 @@ function recalcTotal() {
 function saveEntry() {
   const empName = getEntryEmpName();
   if (!empName) { showToast('⚠️ يرجى اختيار اسم الموظف', 'warning'); document.getElementById('f-emp').focus(); return; }
+
+  // إجازة / عذر → save an attendance record only (no evaluation, no scores)
+  if (entryAttStatus !== 'present') { saveAttendanceRecord(empName); return; }
+
   if (!entryCriteria.length) { showToast('⚠️ اختر الموظف أولاً لعرض معايير التقييم', 'warning'); document.getElementById('f-emp').focus(); return; }
 
   // Snapshot the role-specific criteria + scores with each entry so the saved
@@ -3859,6 +4071,11 @@ function resetEntryForm() {
   document.getElementById('f-notes').value = '';
   document.getElementById('f-period').value = 'صباحي';
   document.getElementById('f-dept').value = 'المبيعات';
+  // Reset حالة الموظف back to حاضر and restore the evaluation sections
+  entryAttStatus = 'present';
+  const attSel = document.getElementById('f-att-status');
+  if (attSel) attSel.value = 'present';
+  updateEntryAttendanceUI();
   // Reset dynamic criteria back to the empty "select an employee" state
   entryCriteria = [];
   entryJobType  = null;
@@ -3982,6 +4199,7 @@ function saveDraft() {
       period:     document.getElementById('f-period')?.value     || '',
       notes:      document.getElementById('f-notes')?.value      || '',
       jobType:    entryJobType,
+      attStatus:  entryAttStatus,
       scores: {}
     };
     entryCriteria.forEach((c, i) => {
@@ -4014,6 +4232,13 @@ function restoreDraft() {
     setVal('f-dept', d.dept);
     setVal('f-period', d.period);
     setVal('f-notes', d.notes);
+    // Restore حالة الموظف (attendance status) before the criteria
+    if (d.attStatus && ATT_STATUS[d.attStatus]) {
+      entryAttStatus = d.attStatus;
+      const attSel = document.getElementById('f-att-status');
+      if (attSel) attSel.value = d.attStatus;
+      updateEntryAttendanceUI();
+    }
     // Rebuild the role-specific criteria before restoring per-criterion scores.
     // (custom names keep the drafted job type; known employees auto-detect.)
     if (d.jobType && JOBTYPE_KEYS.includes(d.jobType)) entryJobType = d.jobType;
