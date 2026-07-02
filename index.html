@@ -206,6 +206,18 @@ tbody td:first-child{font-weight:700;color:var(--text1);}
 /* ── ANALYTICS SECTION ── */
 .analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
 @media(max-width:900px){.analytics-grid{grid-template-columns:1fr;}}
+/* ── HISTORY (السجل) PAGE ── */
+.hist-filters-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:center;}
+@media(max-width:1024px){.hist-filters-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:520px){.hist-filters-grid{grid-template-columns:1fr;}}
+.hist-chip{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:all .2s;white-space:nowrap;min-height:34px;}
+.hist-chip:hover{border-color:var(--primary);color:var(--primary);}
+.hist-chip.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.3);}
+.hist-status-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .2s;}
+.hist-status-row:hover{background:var(--primary-50);}
+.dark .hist-status-row:hover{background:#172554;}
+.hist-status-row:last-child{border-bottom:none;}
+@media(max-width:1024px){#view-history .row-2col{grid-template-columns:1fr;}}
 .attention-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;box-shadow:var(--sh-sm);}
 .attention-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:8px;padding:10px 8px;transition:background .2s;}
 .attention-item:hover{background:var(--danger-light);}
@@ -948,7 +960,7 @@ tbody td:first-child{font-weight:700;color:var(--text1);}
    ANALYTICS VIEW: full width chart on mobile
    ══════════════════════════════════════════════════ */
 @media(max-width:768px){
-  #view-analytics .row-2col{grid-template-columns:1fr;}
+  #view-history .row-2col{grid-template-columns:1fr;}
 }
 
 /* ══════════════════════════════════════════════════
@@ -1334,8 +1346,8 @@ body.employee-role { padding-bottom: 0 !important; }
   <div class="nav-center">
     <button class="nav-tab" id="navtab-entry"          data-view-tab="entry"           onclick="setView('entry')">✏️ إدخال التقييمات</button>
     <button class="nav-tab" id="navtab-dashboard"      data-view-tab="dashboard"       onclick="setView('dashboard')">📊 لوحة التحكم</button>
-    <button class="nav-tab" id="navtab-analytics"      data-view-tab="analytics"       onclick="setView('analytics')">📈 التحليلات</button>
     <button class="nav-tab" id="navtab-ranking"        data-view-tab="ranking"         onclick="setView('ranking')">🏆 التصنيف</button>
+    <button class="nav-tab" id="navtab-history"        data-view-tab="history"         onclick="setView('history')">📜 السجل</button>
     <button class="nav-tab" id="navtab-my-performance" data-view-tab="my-performance"  onclick="setView('my-performance')" style="display:none">👤 أدائي</button>
     <button class="nav-tab" id="navtab-settings"       data-view-tab="settings"        onclick="setView('settings')"       style="display:none">⚙️ الإعدادات</button>
   </div>
@@ -1382,15 +1394,15 @@ body.employee-role { padding-bottom: 0 !important; }
       <div class="mobile-nav-icon">📊</div>
       <div class="mobile-nav-label">لوحة</div>
     </button>
-    <button class="mobile-nav-item" id="mnav-analytics" data-mobile-tab="analytics"
-            onclick="setView('analytics')" aria-label="التحليلات">
-      <div class="mobile-nav-icon">📈</div>
-      <div class="mobile-nav-label">تحليل</div>
-    </button>
     <button class="mobile-nav-item" id="mnav-ranking" data-mobile-tab="ranking"
             onclick="setView('ranking')" aria-label="التصنيف">
       <div class="mobile-nav-icon">🏆</div>
       <div class="mobile-nav-label">تصنيف</div>
+    </button>
+    <button class="mobile-nav-item" id="mnav-history" data-mobile-tab="history"
+            onclick="setView('history')" aria-label="السجل">
+      <div class="mobile-nav-icon">📜</div>
+      <div class="mobile-nav-label">السجل</div>
     </button>
     <button class="mobile-nav-item" id="mnav-settings" data-mobile-tab="settings"
             onclick="setView('settings')" aria-label="الإعدادات" style="display:none">
@@ -1613,23 +1625,81 @@ body.employee-role { padding-bottom: 0 !important; }
   </div><!-- end view-entry -->
 
   <!-- VIEW: ANALYTICS -->
-  <div id="view-analytics" style="display:none">
-    <div class="section-title">📈 التحليلات المتقدمة</div>
-    <div class="row-2col">
-      <div class="chart-card">
-        <div class="section-title" style="font-size:15px;margin-bottom:16px;">مقارنة أداء الموظفين</div>
-        <div class="chart-canvas-wrap"><canvas id="compare-chart"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="section-title" style="font-size:15px;margin-bottom:16px;">توزيع التقييمات</div>
-        <div class="chart-canvas-wrap"><canvas id="dist-chart"></canvas></div>
+  <div id="view-history" style="display:none">
+
+    <!-- Header + export actions -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px;">
+      <div class="section-title" style="margin-bottom:0;">📜 سجل التقييمات</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-sm btn-ghost" onclick="exportHistoryExcel()" title="تصدير إلى Excel">📗 Excel</button>
+        <button class="btn-sm btn-ghost" onclick="exportHistoryCSV()"   title="تصدير إلى CSV">📄 CSV</button>
+        <button class="btn-sm btn-ghost" onclick="exportHistoryPDF()"   title="تصدير إلى PDF">🖨️ PDF</button>
       </div>
     </div>
-    <div class="chart-card" style="margin-top:16px;">
-      <div class="section-title" style="font-size:15px;margin-bottom:16px;">📊 تتبع KPIs الرئيسية عبر الزمن</div>
-      <div style="height:280px;position:relative;"><canvas id="kpi-trend-chart"></canvas></div>
+
+    <!-- Summary stat cards -->
+    <div class="cards-grid" id="hist-stat-cards"></div>
+
+    <!-- Date + search filters -->
+    <div class="chart-card" style="margin-bottom:16px;">
+      <div class="section-title-sm" style="margin-bottom:10px;">🗓️ الفترة الزمنية</div>
+      <div id="hist-range-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+      <div id="hist-custom-range" style="display:none;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+        <label class="form-label" style="margin:0;">من تاريخ</label>
+        <input type="date" class="form-input" id="hist-from" style="width:auto;" onchange="onHistCustomRange()">
+        <label class="form-label" style="margin:0;">إلى تاريخ</label>
+        <input type="date" class="form-input" id="hist-to" style="width:auto;" onchange="onHistCustomRange()">
+      </div>
+      <div class="section-title-sm" style="margin-bottom:10px;">🔍 البحث والفلاتر</div>
+      <div class="hist-filters-grid">
+        <input class="form-input" id="hist-search" placeholder="🔍 بحث فوري بالاسم..." oninput="onHistFilterChange()">
+        <select class="filter-select" id="hist-role" onchange="onHistFilterChange()">
+          <option value="">كل الوظائف</option>
+        </select>
+        <select class="filter-select" id="hist-rater" onchange="onHistFilterChange()">
+          <option value="">كل المقيّمين</option>
+        </select>
+        <select class="filter-select" id="hist-rating" onchange="onHistFilterChange()">
+          <option value="">كل التقديرات</option>
+          <option value="exceptional">استثنائي</option>
+          <option value="excellent">ممتاز</option>
+          <option value="verygood">جيد جداً</option>
+          <option value="good">جيد</option>
+          <option value="needswork">يحتاج تحسين</option>
+        </select>
+        <input class="form-input" type="number" id="hist-min" placeholder="أدنى نتيجة %" min="0" max="100" oninput="onHistFilterChange()">
+        <input class="form-input" type="number" id="hist-max" placeholder="أقصى نتيجة %" min="0" max="100" oninput="onHistFilterChange()">
+        <select class="filter-select" id="hist-status" onchange="onHistFilterChange()">
+          <option value="">حالة التقييم: الكل</option>
+          <option value="evaluated">✅ تم تقييمهم</option>
+          <option value="missing">❌ لم يتم تقييمهم</option>
+        </select>
+        <button class="btn-sm btn-ghost" onclick="resetHistFilters()" style="white-space:nowrap;">↺ مسح الفلاتر</button>
+      </div>
     </div>
-  </div>
+
+    <div class="row-2col" style="align-items:start;">
+      <!-- Evaluation records -->
+      <div class="chart-card" style="padding:0;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">
+          <div class="section-title" style="margin-bottom:0;font-size:15px;">📋 التقييمات المسجّلة</div>
+          <span id="hist-count-badge" style="font-size:11px;font-weight:700;background:var(--primary-light);color:var(--primary);padding:3px 10px;border-radius:20px;"></span>
+        </div>
+        <div id="hist-records-list" class="entries-list" style="max-height:none;"></div>
+        <div id="hist-pagination" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-top:1px solid var(--border);flex-wrap:wrap;"></div>
+      </div>
+
+      <!-- Daily submission status -->
+      <div class="chart-card" style="padding:0;overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+          <div class="section-title" style="margin-bottom:2px;font-size:15px;">✅ حالة التقييم اليومي</div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;" id="hist-status-sub">حسب الفترة المحددة</div>
+        </div>
+        <div id="hist-status-list" style="max-height:560px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
+  </div><!-- end view-history -->
 
   <!-- VIEW: RANKING -->
   <div id="view-ranking" style="display:none">
@@ -2176,7 +2246,7 @@ function setView(v) {
   currentView = v;
 
   // All known views — include the two new ones
-  const allViews = ['dashboard','entry','analytics','ranking','my-performance','settings'];
+  const allViews = ['dashboard','entry','ranking','history','my-performance','settings'];
 
   // Show/hide view panels
   allViews.forEach(x => {
@@ -2198,7 +2268,7 @@ function setView(v) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   // View-specific initialisation
-  if (v === 'analytics')      { setTimeout(initAnalyticsCharts, 50); }
+  if (v === 'history')        { renderHistory(); }
   if (v === 'entry')          { initEntryView(); }
   if (v === 'my-performance') { renderEmployeeView(); }
   if (v === 'settings')       { renderSettings(); }
@@ -2627,90 +2697,409 @@ function updateRadarChart() {
 }
 
 // ═══════════════════════════════════════════════════
-//  ANALYTICS CHARTS
+//  HISTORY VIEW (السجل) — full evaluation records with
+//  date filters, daily submission status, search, exports
 // ═══════════════════════════════════════════════════
-function initAnalyticsCharts() {
-  // Compare chart (horizontal bar)
-  const sorted = [...EMPLOYEES].sort((a,b) =>
-    EMP_DATA[b.id][CURRENT_MONTH_IDX].final - EMP_DATA[a.id][CURRENT_MONTH_IDX].final
-  );
+const HIST_RANGES = [
+  { key:'today',     label:'اليوم' },
+  { key:'yesterday', label:'أمس' },
+  { key:'7d',        label:'آخر 7 أيام' },
+  { key:'30d',       label:'آخر 30 يوم' },
+  { key:'3m',        label:'آخر 3 أشهر' },
+  { key:'6m',        label:'آخر 6 أشهر' },
+  { key:'1y',        label:'آخر سنة' },
+  { key:'custom',    label:'📅 فترة مخصصة' },
+];
+const HIST_PAGE_SIZE = 10;
+let histRange = '7d', histPage = 1;
+let histSearch = '', histRole = '', histRater = '', histMin = '', histMax = '', histRating = '', histStatus = '';
+let _histFiltered = [];   // cache of the current filtered list (reused by exports)
 
-  const cCtx = document.getElementById('compare-chart').getContext('2d');
-  if (chartInstances.compare) chartInstances.compare.destroy();
-  chartInstances.compare = new Chart(cCtx, {
-    type: 'bar',
-    data: {
-      labels: sorted.map(e => e.name.split(' ')[0]),
-      datasets: [{
-        label: 'النتيجة النهائية',
-        data: sorted.map(e => EMP_DATA[e.id][CURRENT_MONTH_IDX].final),
-        backgroundColor: sorted.map(e => e.color + 'cc'),
-        borderColor: sorted.map(e => e.color),
-        borderWidth: 1.5,
-        borderRadius: 6,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { family: 'Cairo', size: 11 }, color: isDark ? '#94a3b8' : '#64748b' } },
-        y: { min: 0, max: 100, grid: { color: isDark ? '#334155' : '#f1f5f9' }, ticks: { font: { family: 'Cairo', size: 11 }, color: isDark ? '#94a3b8' : '#64748b', callback: v => v + '%' } }
+function histRangeLabel() {
+  const r = HIST_RANGES.find(x => x.key === histRange);
+  if (histRange !== 'custom') return r ? r.label : '';
+  const f = document.getElementById('hist-from')?.value || '...';
+  const t = document.getElementById('hist-to')?.value || '...';
+  return `من ${f} إلى ${t}`;
+}
+
+function getHistRangeBounds() {
+  const now = new Date();
+  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const endOfDay   = d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  const back = (days) => { const s = new Date(now); s.setDate(s.getDate() - days); return { start: startOfDay(s), end: endOfDay(now) }; };
+  switch (histRange) {
+    case 'today':     return { start: startOfDay(now), end: endOfDay(now) };
+    case 'yesterday': { const y = new Date(now); y.setDate(y.getDate() - 1); return { start: startOfDay(y), end: endOfDay(y) }; }
+    case '7d':  return back(6);
+    case '30d': return back(29);
+    case '3m': { const s = new Date(now); s.setMonth(s.getMonth() - 3);       return { start: startOfDay(s), end: endOfDay(now) }; }
+    case '6m': { const s = new Date(now); s.setMonth(s.getMonth() - 6);       return { start: startOfDay(s), end: endOfDay(now) }; }
+    case '1y': { const s = new Date(now); s.setFullYear(s.getFullYear() - 1); return { start: startOfDay(s), end: endOfDay(now) }; }
+    case 'custom': {
+      const f = document.getElementById('hist-from')?.value;
+      const t = document.getElementById('hist-to')?.value;
+      return {
+        start: f ? startOfDay(new Date(f + 'T00:00:00')) : new Date(0),
+        end:   t ? endOfDay(new Date(t + 'T00:00:00'))   : endOfDay(now)
+      };
+    }
+    default: return { start: new Date(0), end: endOfDay(now) };
+  }
+}
+
+// ── Entry helpers (handle both new role-based and legacy KPI records) ──
+function histEntryRoleKey(e)   { return e.jobType || getEmpJobTypeByName(e.empName); }
+function histEntryRoleLabel(e) { return e.jobTypeLabel || jobLabel(histEntryRoleKey(e)); }
+function histEntryCriteria(e) {
+  if (Array.isArray(e.criteria) && e.criteria.length) return e.criteria.map(c => ({ name: c.name, score: c.score }));
+  if (e.scores) return KPIs.map(k => ({ name: k.label, score: e.scores[k.id] }));
+  return [];
+}
+
+// Single-pass filter over savedEntries (fast even with thousands of records)
+function getFilteredHistory() {
+  const { start, end } = getHistRangeBounds();
+  const q = histSearch.trim().toLowerCase();
+  return savedEntries.filter(e => {
+    const d = new Date(e.dateISO);
+    if (isNaN(d) || d < start || d > end) return false;
+    if (q && !e.empName.toLowerCase().includes(q) && !(e.rater || '').toLowerCase().includes(q)) return false;
+    if (histRole && histEntryRoleKey(e) !== histRole) return false;
+    if (histRater && (e.rater || '—') !== histRater) return false;
+    if (histMin !== '' && e.final < Number(histMin)) return false;
+    if (histMax !== '' && e.final > Number(histMax)) return false;
+    if (histRating && getStatus(e.final).key !== histRating) return false;
+    return true;
+  }).sort((a, b) => new Date(b.dateISO) - new Date(a.dateISO));
+}
+
+// ── Filter events ──
+function setHistRange(key) {
+  histRange = key; histPage = 1;
+  const custom = document.getElementById('hist-custom-range');
+  if (custom) custom.style.display = key === 'custom' ? 'flex' : 'none';
+  renderHistory();
+}
+function onHistCustomRange() { histRange = 'custom'; histPage = 1; renderHistory(); }
+function onHistFilterChange() {
+  histSearch = document.getElementById('hist-search')?.value || '';
+  histRole   = document.getElementById('hist-role')?.value   || '';
+  histRater  = document.getElementById('hist-rater')?.value  || '';
+  histRating = document.getElementById('hist-rating')?.value || '';
+  histStatus = document.getElementById('hist-status')?.value || '';
+  histMin    = document.getElementById('hist-min')?.value    || '';
+  histMax    = document.getElementById('hist-max')?.value    || '';
+  histPage = 1;
+  renderHistory();
+}
+function resetHistFilters() {
+  histSearch = histRole = histRater = histRating = histStatus = histMin = histMax = '';
+  ['hist-search','hist-role','hist-rater','hist-rating','hist-status','hist-min','hist-max'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  histPage = 1;
+  renderHistory();
+  showToast('↺ تم مسح جميع الفلاتر', 'info');
+}
+function histGoPage(p) { histPage = p; renderHistory(); document.getElementById('hist-records-list')?.scrollIntoView({ behavior:'smooth', block:'start' }); }
+
+// ── Main renderer ──
+function renderHistory() {
+  const chipsEl = document.getElementById('hist-range-chips');
+  if (!chipsEl) return;
+
+  // 1. Date range chips
+  chipsEl.innerHTML = HIST_RANGES.map(r =>
+    `<button class="hist-chip ${r.key === histRange ? 'active' : ''}" onclick="setHistRange('${r.key}')">${r.label}</button>`).join('');
+
+  // 2. Role + rater dropdown options (rebuilt but selection preserved)
+  const roleSel = document.getElementById('hist-role');
+  if (roleSel && roleSel.options.length <= 1) {
+    roleSel.innerHTML = '<option value="">كل الوظائف</option>' +
+      JOB_TYPES.map(j => `<option value="${j.key}">${j.label}</option>`).join('');
+    roleSel.value = histRole;
+  }
+  const raterSel = document.getElementById('hist-rater');
+  if (raterSel) {
+    const raters = [...new Set(savedEntries.map(e => e.rater || '—'))].filter(r => r && r !== '—');
+    const cur = histRater;
+    raterSel.innerHTML = '<option value="">كل المقيّمين</option>' +
+      raters.map(r => `<option value="${r}">${r}</option>`).join('');
+    raterSel.value = cur;
+  }
+
+  // 3. Filtered records (cached for exports + pagination)
+  _histFiltered = getFilteredHistory();
+  const evaluatedNames = new Set(_histFiltered.map(e => e.empName));
+
+  // 4. Summary stat cards
+  const finals = _histFiltered.map(e => e.final);
+  const evaluatedCount = EMPLOYEES.filter(emp => evaluatedNames.has(emp.name)).length;
+  const missingCount   = EMPLOYEES.length - evaluatedCount;
+  const avg = finals.length ? finals.reduce((a, b) => a + b, 0) / finals.length : 0;
+  const max = finals.length ? Math.max(...finals) : 0;
+  const min = finals.length ? Math.min(...finals) : 0;
+  const cards = [
+    { color:'blue',   icon:'👥', label:'إجمالي الموظفين',  value: String(EMPLOYEES.length) },
+    { color:'green',  icon:'✅', label:'تم تقييمهم',        value: String(evaluatedCount) },
+    { color:'pink',   icon:'❌', label:'لم يتم تقييمهم',    value: String(missingCount) },
+    { color:'purple', icon:'📊', label:'متوسط النتائج',     value: finals.length ? avg.toFixed(1) + '%' : '—' },
+    { color:'amber',  icon:'🏆', label:'أعلى نتيجة',        value: finals.length ? max.toFixed(1) + '%' : '—' },
+    { color:'cyan',   icon:'📉', label:'أدنى نتيجة',        value: finals.length ? min.toFixed(1) + '%' : '—' },
+  ];
+  document.getElementById('hist-stat-cards').innerHTML = cards.map(c => `
+    <div class="stat-card ${c.color}">
+      <div class="stat-card-header"><div class="stat-card-icon">${c.icon}</div></div>
+      <div class="stat-card-value" style="font-size:${c.value.length > 5 ? '18px' : '24px'}">${c.value}</div>
+      <div class="stat-card-label">${c.label}</div>
+    </div>`).join('');
+
+  // 5. Daily submission status panel (✅ / ❌ per employee)
+  const statusSub = document.getElementById('hist-status-sub');
+  if (statusSub) statusSub.textContent = 'الفترة: ' + histRangeLabel();
+  const q = histSearch.trim().toLowerCase();
+  const statusRows = EMPLOYEES
+    .filter(emp => !q || emp.name.toLowerCase().includes(q))
+    .filter(emp => !histRole || getEmpJobType(emp.id) === histRole)
+    .filter(emp => {
+      if (histStatus === 'evaluated') return evaluatedNames.has(emp.name);
+      if (histStatus === 'missing')   return !evaluatedNames.has(emp.name);
+      return true;
+    })
+    .sort((a, b) => Number(evaluatedNames.has(b.name)) - Number(evaluatedNames.has(a.name)));
+  document.getElementById('hist-status-list').innerHTML = statusRows.length ? statusRows.map(emp => {
+    const done  = evaluatedNames.has(emp.name);
+    const count = done ? _histFiltered.filter(e => e.empName === emp.name).length : 0;
+    return `
+      <div class="hist-status-row" onclick="openEmpHistory('${emp.name.replace(/'/g, "\\'")}')">
+        <div class="performer-avatar" style="background:${emp.color};width:30px;height:30px;font-size:12px;">${getAvatarInitial(emp.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--text1);">${emp.name}</div>
+          <div style="font-size:10px;color:var(--text3);font-weight:600;">${jobLabel(getEmpJobType(emp.id))}${done ? ' · ' + count + ' تقييم' : ''}</div>
+        </div>
+        <span class="status-badge ${done ? 'status-excellent' : 'status-needswork'}" style="font-size:10px;">
+          ${done ? '✅ تم التقييم' : '❌ لم يتم التقييم'}
+        </span>
+      </div>`;
+  }).join('') : `<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px;font-weight:600;">لا يوجد موظفون مطابقون للفلاتر</div>`;
+
+  // 6. Records list + pagination
+  const badge = document.getElementById('hist-count-badge');
+  if (badge) badge.textContent = _histFiltered.length + ' تقييم';
+  const listEl = document.getElementById('hist-records-list');
+  const totalPages = Math.max(1, Math.ceil(_histFiltered.length / HIST_PAGE_SIZE));
+  if (histPage > totalPages) histPage = totalPages;
+  const pageItems = _histFiltered.slice((histPage - 1) * HIST_PAGE_SIZE, histPage * HIST_PAGE_SIZE);
+
+  listEl.innerHTML = pageItems.length ? pageItems.map(e => histRecordCard(e)).join('') : `
+    <div class="empty-entries" style="padding:32px;">
+      <div class="empty-entries-icon">📜</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text3);margin-bottom:6px;">لا توجد تقييمات في هذه الفترة</div>
+      <div style="font-size:12px;color:var(--text4);">جرّب فترة زمنية أخرى أو عدّل الفلاتر</div>
+    </div>`;
+
+  const pagEl = document.getElementById('hist-pagination');
+  if (pagEl) {
+    if (totalPages <= 1) { pagEl.innerHTML = ''; }
+    else {
+      let btns = '';
+      for (let p = 1; p <= totalPages; p++) {
+        if (totalPages > 9 && p > 2 && p < totalPages - 1 && Math.abs(p - histPage) > 1) {
+          if (!btns.endsWith('…')) btns += '…';
+          continue;
+        }
+        btns += `<button class="page-btn" style="${p === histPage ? 'background:var(--primary);color:#fff;border-color:var(--primary);' : ''}" onclick="histGoPage(${p})">${p}</button>`;
       }
+      pagEl.innerHTML = `<span class="table-info" style="margin-left:8px;">صفحة ${histPage} من ${totalPages}</span>` + btns;
     }
-  });
+  }
+}
 
-  // Distribution (donut)
-  const counts = { exceptional:0, excellent:0, verygood:0, good:0, needswork:0 };
-  EMPLOYEES.forEach(e => { counts[getStatus(EMP_DATA[e.id][CURRENT_MONTH_IDX].final).key]++; });
-  const dCtx = document.getElementById('dist-chart').getContext('2d');
-  if (chartInstances.dist) chartInstances.dist.destroy();
-  chartInstances.dist = new Chart(dCtx, {
-    type: 'doughnut',
-    data: {
-      labels: ['استثنائي','ممتاز','جيد جداً','جيد','يحتاج تحسين'],
-      datasets: [{
-        data: [counts.exceptional, counts.excellent, counts.verygood, counts.good, counts.needswork],
-        backgroundColor: ['#f59e0b','#22c55e','#2563eb','#8b5cf6','#ef4444'],
-        borderWidth: 0,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '60%',
-      plugins: { legend: { position: 'bottom', labels: { font: { family: 'Cairo', size: 11 }, color: isDark ? '#94a3b8' : '#64748b', padding: 12, boxWidth: 12 } } }
-    }
-  });
+// One evaluation record card (matches the entries-panel design)
+function histRecordCard(e) {
+  const status = getStatus(e.final);
+  const scoreColor = getScoreColor(e.final);
+  const crit = histEntryCriteria(e);
+  return `
+    <div class="entry-item-card" onclick="openEmpHistory('${e.empName.replace(/'/g, "\\'")}')" style="cursor:pointer;">
+      <div class="entry-item-top">
+        <div>
+          <div class="entry-item-name">${e.empName}
+            <span style="font-size:10px;font-weight:800;color:var(--primary);background:var(--primary-light);padding:2px 8px;border-radius:10px;margin-right:6px;">🏷️ ${histEntryRoleLabel(e)}</span>
+          </div>
+          <div class="entry-item-meta">📅 ${e.dateLabel || ''} · 🕐 ${e.timeLabel || ''}${e.period ? ' · ' + e.period : ''}</div>
+          ${e.rater && e.rater !== '—' ? `<div class="entry-item-meta">👤 المقيّم: ${e.rater}</div>` : ''}
+          ${e.notes ? `<div class="entry-item-meta" style="color:var(--text2);font-style:italic;">💬 ${e.notes}</div>` : ''}
+        </div>
+        <div style="text-align:left;">
+          <div class="entry-item-score" style="color:${scoreColor};">${Number(e.final).toFixed(1)}%</div>
+          <span class="status-badge ${status.cls}" style="font-size:10px;">${status.label}</span>
+        </div>
+      </div>
+      <div class="entry-item-kpis">
+        ${crit.map((c, i) => `
+          <div class="entry-kpi-chip" style="border-color:${CRIT_COLORS[i % CRIT_COLORS.length]}40;color:${c.score >= 8 ? CRIT_COLORS[i % CRIT_COLORS.length] : 'var(--text3)'};">
+            📌 ${c.name}: ${c.score}/10
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
 
-  // KPI trend over time (all months)
-  const ktCtx = document.getElementById('kpi-trend-chart').getContext('2d');
-  if (chartInstances.kpiTrend) chartInstances.kpiTrend.destroy();
-  const topKpis = KPIs.slice(0, 3);
-  chartInstances.kpiTrend = new Chart(ktCtx, {
-    type: 'line',
-    data: {
-      labels: MONTHS,
-      datasets: topKpis.map(k => ({
-        label: k.label,
-        data: MONTHS.map((_, mi) =>
-          EMPLOYEES.reduce((s, e) => s + EMP_DATA[e.id][mi].scores[k.id], 0) / EMPLOYEES.length
-        ),
-        borderColor: k.color,
-        backgroundColor: k.color + '15',
-        tension: 0.4,
-        borderWidth: 2,
-        pointRadius: 3,
-        fill: false,
-      }))
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { font: { family: 'Cairo', size: 11 }, color: isDark ? '#94a3b8' : '#64748b', boxWidth: 12, padding: 16 } } },
-      scales: {
-        x: { grid: { color: isDark ? '#334155' : '#f1f5f9' }, ticks: { font: { family: 'Cairo', size: 11 }, color: isDark ? '#64748b' : '#94a3b8' } },
-        y: { min: 50, max: 100, grid: { color: isDark ? '#334155' : '#f1f5f9' }, ticks: { font: { family: 'Cairo', size: 11 }, color: isDark ? '#64748b' : '#94a3b8', callback: v => v + '%' } }
-      }
-    }
-  });
+// ── Employee full-history modal ──
+let histEmpName = null, histEmpSortDesc = true;
+function openEmpHistory(name) { histEmpName = name; histEmpSortDesc = true; renderEmpHistoryModal(); }
+function toggleEmpHistorySort(v) { histEmpSortDesc = v === 'desc'; renderEmpHistoryModal(); }
+function closeEmpHistory() {
+  const m = document.getElementById('hist-emp-modal');
+  if (m) m.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function renderEmpHistoryModal() {
+  let overlay = document.getElementById('hist-emp-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'hist-emp-modal';
+    overlay.className = 'modal-overlay';
+    overlay.addEventListener('click', ev => { if (ev.target === overlay) closeEmpHistory(); });
+    document.body.appendChild(overlay);
+  }
+  const emp = EMPLOYEES.find(x => x.name === histEmpName);
+  const all = savedEntries
+    .filter(e => e.empName === histEmpName)
+    .sort((a, b) => histEmpSortDesc
+      ? new Date(b.dateISO) - new Date(a.dateISO)
+      : new Date(a.dateISO) - new Date(b.dateISO));
+
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;max-width:640px;width:92%;max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh-lg);" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);">
+        <div class="performer-avatar" style="background:${emp ? emp.color : 'var(--primary)'};width:42px;height:42px;font-size:16px;">${getAvatarInitial(histEmpName || '؟')}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:16px;font-weight:900;color:var(--text1);">${histEmpName}</div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;">📜 السجل الكامل · ${all.length} تقييم${emp ? ' · ' + jobLabel(getEmpJobType(emp.id)) : ''}</div>
+        </div>
+        <select class="filter-select" style="font-size:11px;padding:5px 8px;" onchange="toggleEmpHistorySort(this.value)">
+          <option value="desc" ${histEmpSortDesc ? 'selected' : ''}>⬇️ الأحدث أولاً</option>
+          <option value="asc"  ${!histEmpSortDesc ? 'selected' : ''}>⬆️ الأقدم أولاً</option>
+        </select>
+        <button onclick="closeEmpHistory()" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-weight:800;cursor:pointer;">✕</button>
+      </div>
+      <div style="overflow-y:auto;padding:12px 16px;">
+        ${all.length ? all.map(e => {
+          const st = getStatus(e.final);
+          const crit = histEntryCriteria(e);
+          return `
+            <div class="entry-item-card" style="margin-bottom:10px;">
+              <div class="entry-item-top">
+                <div>
+                  <div class="entry-item-meta" style="font-weight:800;color:var(--text1);">📅 ${e.dateLabel || ''} · 🕐 ${e.timeLabel || ''}</div>
+                  ${e.rater && e.rater !== '—' ? `<div class="entry-item-meta">👤 المقيّم: ${e.rater}</div>` : ''}
+                  ${e.notes ? `<div class="entry-item-meta" style="font-style:italic;">💬 ${e.notes}</div>` : ''}
+                </div>
+                <div style="text-align:left;">
+                  <div class="entry-item-score" style="color:${getScoreColor(e.final)};">${Number(e.final).toFixed(1)}%</div>
+                  <span class="status-badge ${st.cls}" style="font-size:10px;">${st.label}</span>
+                </div>
+              </div>
+              <div class="entry-item-kpis">
+                ${crit.map((c, i) => `<div class="entry-kpi-chip" style="border-color:${CRIT_COLORS[i % CRIT_COLORS.length]}40;">📌 ${c.name}: ${c.score}/10</div>`).join('')}
+              </div>
+            </div>`;
+        }).join('') : '<div style="padding:32px;text-align:center;color:var(--text3);font-weight:600;">لا توجد تقييمات مسجّلة لهذا الموظف بعد</div>'}
+      </div>
+    </div>`;
+  overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+// ── Exports (respect the active filters exactly) ──
+function histExportRows() {
+  const list = _histFiltered.length || currentView === 'history' ? _histFiltered : getFilteredHistory();
+  const headers = ['التاريخ','الوقت','الموظف','الوظيفة','المقيّم','النتيجة %','التقدير','المعايير','ملاحظات'];
+  const rows = list.map(e => [
+    e.dateLabel || new Date(e.dateISO).toLocaleDateString('ar-EG'),
+    e.timeLabel || '',
+    e.empName,
+    histEntryRoleLabel(e),
+    e.rater || '—',
+    Number(e.final).toFixed(1),
+    getStatus(e.final).label.replace(/[^؀-ۿA-Za-z\s]/g, '').trim(),
+    histEntryCriteria(e).map(c => `${c.name}: ${c.score}/10`).join(' | '),
+    e.notes || ''
+  ]);
+  return { headers, rows };
+}
+function csvEsc(v) { v = String(v ?? ''); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+function exportHistoryCSV() {
+  const { headers, rows } = histExportRows();
+  if (!rows.length) { showToast('⚠️ لا توجد بيانات للتصدير في الفترة المحددة', 'warning'); return; }
+  const csv = '﻿' + [headers, ...rows].map(r => r.map(csvEsc).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'سجل_التقييمات.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ تم التصدير إلى CSV', 'success');
+}
+
+function exportHistoryExcel() {
+  const { headers, rows } = histExportRows();
+  if (!rows.length) { showToast('⚠️ لا توجد بيانات للتصدير في الفترة المحددة', 'warning'); return; }
+  const doXlsx = () => {
+    try {
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const wb = XLSX.utils.book_new();
+      wb.Workbook = { Views: [{ RTL: true }] };
+      XLSX.utils.book_append_sheet(wb, ws, 'سجل التقييمات');
+      XLSX.writeFile(wb, 'سجل_التقييمات.xlsx');
+      showToast('✅ تم التصدير إلى Excel (.xlsx)', 'success');
+    } catch (err) { xlsFallback(); }
+  };
+  // Fallback: Excel-compatible HTML table (.xls) — works fully offline
+  const xlsFallback = () => {
+    const table = `<table dir="rtl"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${
+      rows.map(r => `<tr>${r.map(c => `<td>${String(c).replace(/</g, '&lt;')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    const blob = new Blob(['﻿<html dir="rtl"><head><meta charset="UTF-8"></head><body>' + table + '</body></html>'],
+      { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'سجل_التقييمات.xls'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ تم التصدير إلى Excel', 'success');
+  };
+  if (typeof XLSX !== 'undefined') return doXlsx();
+  showToast('⏳ جاري تجهيز ملف Excel...', 'info');
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+  s.onload = doXlsx;
+  s.onerror = xlsFallback;
+  document.head.appendChild(s);
+}
+
+function exportHistoryPDF() {
+  const { headers, rows } = histExportRows();
+  if (!rows.length) { showToast('⚠️ لا توجد بيانات للتصدير في الفترة المحددة', 'warning'); return; }
+  const w = window.open('', '_blank');
+  if (!w) { showToast('⚠️ يرجى السماح بالنوافذ المنبثقة لتصدير PDF', 'warning'); return; }
+  w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سجل التقييمات</title>
+    <style>
+      body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:24px;color:#0f172a;}
+      h1{font-size:18px;margin-bottom:4px;} .sub{font-size:12px;color:#64748b;margin-bottom:16px;}
+      table{width:100%;border-collapse:collapse;font-size:10px;}
+      th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:right;vertical-align:top;}
+      th{background:#eff6ff;font-weight:800;} tr:nth-child(even) td{background:#f8fafc;}
+      @media print{ body{padding:8px;} }
+    </style></head><body>
+    <h1>📜 سجل التقييمات — STR Standard</h1>
+    <div class="sub">الفترة: ${histRangeLabel()} · عدد السجلات: ${rows.length} · تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG')}</div>
+    <table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${String(c).replace(/</g, '&lt;')}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    </body></html>`);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 450);
+  showToast('🖨️ جاري تجهيز ملف PDF للطباعة...', 'info');
 }
 
 // ═══════════════════════════════════════════════════
@@ -3430,13 +3819,16 @@ function saveEntry() {
   const final = Math.round(rawWeighted * 10 * 10) / 10;
   const now = new Date();
 
+  const empRec = EMPLOYEES.find(x => x.name === empName);
   const entry = {
     id: Date.now(),
+    empId: empRec ? empRec.id : null,
     empName,
     rater: getEntryRaterName() || '—',
     dept: document.getElementById('f-dept').value,
     jobType: entryJobType,
     jobTypeLabel: jobLabel(entryJobType),
+    rating: getStatus(final).label,
     criteria: critSnapshot,
     period: document.getElementById('f-period').value,
     notes: document.getElementById('f-notes').value.trim(),
@@ -3755,8 +4147,8 @@ const SAMPLE_USERS = [
 ];
 const ROLE_LABELS   = { ceo:'مدير تنفيذي', manager:'مشرف', employee:'موظف' };
 const VIEWS_BY_ROLE = {
-  ceo:      ['dashboard','entry','analytics','ranking','settings'],
-  manager:  ['dashboard','entry','analytics','ranking','settings'],
+  ceo:      ['entry','dashboard','ranking','history','settings'],
+  manager:  ['entry','dashboard','ranking','history','settings'],
   employee: ['my-performance'],
 };
 
@@ -3963,7 +4355,7 @@ function logout() {
   document.getElementById('login-screen').style.display = '';
 
   // Reset all views to hidden
-  ['dashboard','entry','analytics','ranking','my-performance','settings'].forEach(v => {
+  ['dashboard','entry','ranking','history','my-performance','settings'].forEach(v => {
     const el = document.getElementById('view-' + v);
     if (el) el.style.display = 'none';
   });
@@ -4742,8 +5134,8 @@ function refreshAllDashboards() {
   try { renderRanking();        } catch(e){}
   try { initTrendChart();       } catch(e){}
   try { initRadarChart();       } catch(e){}
-  if (currentView === 'analytics') {
-    try { initAnalyticsCharts(); } catch(e){}
+  if (currentView === 'history') {
+    try { renderHistory(); } catch(e){}
   }
   if (currentView === 'my-performance') {
     try { renderEmployeeView(); } catch(e){}
